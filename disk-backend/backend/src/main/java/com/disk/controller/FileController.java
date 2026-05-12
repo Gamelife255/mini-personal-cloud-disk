@@ -67,13 +67,21 @@ public class FileController {
             String originalFilename = file.getOriginalFilename();
             String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
             String newFileName = UUID.randomUUID().toString() + fileExtension;
-            
-            Path uploadDir = Paths.get(uploadPath);
-            if (!Files.exists(uploadDir)) {
-                Files.createDirectories(uploadDir);
+
+            // 确定文件保存目录：有父文件夹则存入对应目录，否则存根目录
+            Path saveDir = Paths.get(uploadPath);
+            if (parentId != null && parentId != 0) {
+                com.disk.entity.File parentFolder = fileService.download(parentId);
+                if (parentFolder != null && parentFolder.getIsFolder() == 1
+                        && parentFolder.getFilePath() != null && !parentFolder.getFilePath().isEmpty()) {
+                    saveDir = Paths.get(parentFolder.getFilePath());
+                }
             }
-            
-            Path filePath = uploadDir.resolve(newFileName);
+            if (!Files.exists(saveDir)) {
+                Files.createDirectories(saveDir);
+            }
+
+            Path filePath = saveDir.resolve(newFileName);
             Files.copy(file.getInputStream(), filePath);
             
             // 处理PSD文件，生成预览图
@@ -81,7 +89,7 @@ public class FileController {
             if (PsdUtil.isPsdFile(originalFilename)) {
                 try {
                     String previewFileName = UUID.randomUUID().toString() + ".png";
-                    Path previewFilePath = uploadDir.resolve(previewFileName);
+                    Path previewFilePath = saveDir.resolve(previewFileName);
                     BufferedImage previewImage = PsdUtil.psdToImage(filePath.toFile());
                     ImageIO.write(previewImage, "png", previewFilePath.toFile());
                     previewPath = previewFilePath.toString();
@@ -137,15 +145,24 @@ public class FileController {
                 return result;
             }
             
+            // 创建文件夹对应的实体目录
+            Path uploadDir = Paths.get(uploadPath);
+            if (!Files.exists(uploadDir)) {
+                Files.createDirectories(uploadDir);
+            }
+            String folderDirName = UUID.randomUUID().toString();
+            Path folderPath = uploadDir.resolve(folderDirName);
+            Files.createDirectories(folderPath);
+
             com.disk.entity.File folder = new com.disk.entity.File();
             folder.setUserId(userId);
             folder.setFileName(folderName);
             folder.setFileType("folder");
-            folder.setFilePath("");
+            folder.setFilePath(folderPath.toString());
             folder.setFileSize(0L);
             folder.setParentId(parentId);
             folder.setIsFolder(1);
-            
+
             com.disk.entity.File createdFolder = fileService.upload(folder);
             
             result.put("code", 200);

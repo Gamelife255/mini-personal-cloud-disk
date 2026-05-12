@@ -24,7 +24,10 @@
       
       <div class="register-link">
         还没有账号？
-        <el-button type="text" @click="goToRegister">立即注册</el-button>
+        <el-button link @click="goToRegister">立即注册</el-button>
+      </div>
+      <div class="forgot-link">
+        <el-button link @click="goToForgot">忘记密码？</el-button>
       </div>
     </div>
   </div>
@@ -74,6 +77,10 @@ const handleLogin = async () => {
 
 const goToRegister = () => {
   router.push('/register')
+}
+
+const goToForgot = () => {
+  router.push('/forgot-password')
 }
 </script>
 
@@ -128,5 +135,16 @@ h1 {
   padding: 0;
   margin-left: 5px;
   color: #667eea;
+}
+
+.forgot-link {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.forgot-link button {
+  padding: 0;
+  color: #909399;
+  font-size: 13px;
 }
 </style>

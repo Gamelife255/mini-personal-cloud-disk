@@ -15,3 +15,27 @@ export function register(data) {
     data
   })
 }
+
+export function sendVerifyCode(email) {
+  return request({
+    url: '/api/user/send-verify-code',
+    method: 'post',
+    data: { email }
+  })
+}
+
+export function sendResetCode(email) {
+  return request({
+    url: '/api/user/send-reset-code',
+    method: 'post',
+    data: { email }
+  })
+}
+
+export function resetPassword(data) {
+  return request({
+    url: '/api/user/reset-password',
+    method: 'post',
+    data
+  })
+}

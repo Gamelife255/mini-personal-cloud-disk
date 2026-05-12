@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a44b1e7a-9e7d-4a78-838e-fe9e540fa982" name="更改" comment="" />
+    <list default="true" id="a44b1e7a-9e7d-4a78-838e-fe9e540fa982" name="更改" comment="">
+      <change beforePath="$PROJECT_DIR$/TODO.md" beforeDir="false" afterPath="$PROJECT_DIR$/TODO.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/disk-backend/backend/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/disk-backend/backend/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/disk-backend/backend/src/main/java/com/disk/controller/FileController.java" beforeDir="false" afterPath="$PROJECT_DIR$/disk-backend/backend/src/main/java/com/disk/controller/FileController.java" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

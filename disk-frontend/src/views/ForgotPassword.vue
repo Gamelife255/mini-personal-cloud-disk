@@ -1,47 +1,43 @@
 <template>
-  <div class="register-container">
-    <div class="register-box">
+  <div class="forgot-container">
+    <div class="forgot-box">
       <div class="logo">
         <span class="icon">☁️</span>
-        <h1>注册账号</h1>
+        <h1>找回密码</h1>
       </div>
-      
-      <el-form ref="registerFormRef" :model="registerForm" :rules="rules" label-width="80px">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="registerForm.username" placeholder="请输入用户名" />
-        </el-form-item>
-        
-        <el-form-item label="密码" prop="password">
-          <el-input type="password" v-model="registerForm.password" placeholder="请输入密码" />
-        </el-form-item>
-        
-        <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input type="password" v-model="registerForm.confirmPassword" placeholder="请再次输入密码" />
-        </el-form-item>
-        
+
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="邮箱" prop="email">
-          <el-input v-model="registerForm.email" placeholder="请输入邮箱" />
+          <el-input v-model="form.email" placeholder="请输入注册邮箱" />
         </el-form-item>
 
         <el-form-item label="验证码" prop="code">
           <div class="code-row">
-            <el-input v-model="registerForm.code" placeholder="请输入验证码" class="code-input" />
+            <el-input v-model="form.code" placeholder="请输入验证码" class="code-input" />
             <el-button :disabled="codeCountdown > 0" @click="sendCode" :loading="sending">
               {{ codeCountdown > 0 ? codeCountdown + 's 后重发' : '发送验证码' }}
             </el-button>
           </div>
         </el-form-item>
 
+        <el-form-item label="新密码" prop="password">
+          <el-input type="password" v-model="form.password" placeholder="请输入新密码" />
+        </el-form-item>
+
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input type="password" v-model="form.confirmPassword" placeholder="请再次输入新密码" />
+        </el-form-item>
+
         <el-form-item>
-          <el-button type="primary" @click="handleRegister" class="register-btn" :loading="loading">
-            注册
+          <el-button type="primary" @click="handleReset" class="reset-btn" :loading="loading">
+            重置密码
           </el-button>
         </el-form-item>
       </el-form>
-      
+
       <div class="login-link">
-        已有账号？
-        <el-button type="text" @click="goToLogin">立即登录</el-button>
+        想起密码了？
+        <el-button link @click="goToLogin">返回登录</el-button>
       </div>
     </div>
   </div>
@@ -50,7 +46,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { register, sendVerifyCode } from '../api/user'
+import { sendResetCode, resetPassword } from '../api/user'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -59,16 +55,15 @@ const sending = ref(false)
 const codeCountdown = ref(0)
 let countdownTimer = null
 
-const registerForm = reactive({
-  username: '',
-  password: '',
-  confirmPassword: '',
+const form = reactive({
   email: '',
-  code: ''
+  code: '',
+  password: '',
+  confirmPassword: ''
 })
 
 const validateConfirmPassword = (rule, value, callback) => {
-  if (value !== registerForm.password) {
+  if (value !== form.password) {
     callback(new Error('两次输入的密码不一致'))
   } else {
     callback()
@@ -76,35 +71,31 @@ const validateConfirmPassword = (rule, value, callback) => {
 }
 
 const rules = {
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 20, message: '用户名长度在3到20个字符之间', trigger: 'blur' }
-  ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6个字符', trigger: 'blur' }
-  ],
-  confirmPassword: [
-    { required: true, message: '请确认密码', trigger: 'blur' },
-    { validator: validateConfirmPassword, trigger: 'blur' }
-  ],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
   ],
   code: [
     { required: true, message: '请输入验证码', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能少于6个字符', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认新密码', trigger: 'blur' },
+    { validator: validateConfirmPassword, trigger: 'blur' }
   ]
 }
 
 const sendCode = async () => {
-  if (!registerForm.email) {
+  if (!form.email) {
     ElMessage.warning('请先输入邮箱')
     return
   }
   sending.value = true
   try {
-    const response = await sendVerifyCode(registerForm.email)
+    const response = await sendResetCode(form.email)
     if (response.code === 200) {
       ElMessage.success('验证码已发送，请查收邮件')
       codeCountdown.value = 60
@@ -124,25 +115,22 @@ const sendCode = async () => {
   }
 }
 
-const handleRegister = async () => {
+const handleReset = async () => {
   loading.value = true
   try {
-    const response = await register({
-      username: registerForm.username,
-      password: registerForm.password,
-      email: registerForm.email,
-      code: registerForm.code
+    const response = await resetPassword({
+      email: form.email,
+      code: form.code,
+      password: form.password
     })
     if (response.code === 200) {
-      localStorage.setItem('token', response.token)
-      localStorage.setItem('user', JSON.stringify(response.user))
-      ElMessage.success('注册成功')
-      router.push('/')
+      ElMessage.success('密码重置成功，请重新登录')
+      router.push('/login')
     } else {
-      ElMessage.error(response.message || '注册失败')
+      ElMessage.error(response.message || '重置失败')
     }
   } catch (error) {
-    ElMessage.error('注册失败，请检查网络连接')
+    ElMessage.error('重置密码失败')
   } finally {
     loading.value = false
   }
@@ -154,15 +142,15 @@ const goToLogin = () => {
 </script>
 
 <style scoped>
-.register-container {
+.forgot-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
 }
 
-.register-box {
+.forgot-box {
   background: white;
   padding: 40px;
   border-radius: 12px;
@@ -188,7 +176,7 @@ h1 {
   margin: 0;
 }
 
-.register-btn {
+.reset-btn {
   width: 100%;
   height: 44px;
   font-size: 16px;
@@ -203,7 +191,7 @@ h1 {
 .login-link button {
   padding: 0;
   margin-left: 5px;
-  color: #11998e;
+  color: #f5576c;
 }
 
 .code-row {

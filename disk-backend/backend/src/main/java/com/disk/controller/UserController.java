@@ -32,11 +32,22 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public Object register(@RequestBody User user) {
+    public Object register(@RequestBody Map<String, Object> params) {
         try {
-            User result = userService.register(user);
+            String username = (String) params.get("username");
+            String password = (String) params.get("password");
+            String email = (String) params.get("email");
+            String code = (String) params.get("code");
+
+            User user = new User();
+            user.setUsername(username);
+            user.setPassword(password);
+            user.setEmail(email);
+
+            User result = userService.registerWithCode(user, code);
             String token = JwtUtil.generateToken(result.getId(), result.getUsername());
             Map<String, Object> response = new HashMap<>();
+            response.put("code", 200);
             response.put("token", token);
             response.put("user", result);
             return response;
@@ -46,6 +57,63 @@ public class UserController {
             error.put("message", e.getMessage());
             return error;
         }
+    }
+
+    @PostMapping("/send-verify-code")
+    public Map<String, Object> sendVerifyCode(@RequestBody Map<String, String> params) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String email = params.get("email");
+            if (email == null || email.isEmpty()) {
+                result.put("code", 400);
+                result.put("message", "邮箱不能为空");
+                return result;
+            }
+            userService.sendVerificationCode(email);
+            result.put("code", 200);
+            result.put("message", "验证码已发送");
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    @PostMapping("/send-reset-code")
+    public Map<String, Object> sendResetCode(@RequestBody Map<String, String> params) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String email = params.get("email");
+            if (email == null || email.isEmpty()) {
+                result.put("code", 400);
+                result.put("message", "邮箱不能为空");
+                return result;
+            }
+            userService.sendPasswordResetCode(email);
+            result.put("code", 200);
+            result.put("message", "验证码已发送");
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    @PostMapping("/reset-password")
+    public Map<String, Object> resetPassword(@RequestBody Map<String, String> params) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String email = params.get("email");
+            String code = params.get("code");
+            String password = params.get("password");
+            userService.resetPassword(email, code, password);
+            result.put("code", 200);
+            result.put("message", "密码重置成功");
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", e.getMessage());
+        }
+        return result;
     }
 
     @GetMapping("/{id}")

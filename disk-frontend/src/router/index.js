@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
+import ForgotPassword from '../views/ForgotPassword.vue'
 import Disk from '../views/Disk.vue'
 
 const routes = [
@@ -14,6 +15,12 @@ const routes = [
     path: '/register',
     name: 'Register',
     component: Register,
+    meta: { public: true }
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPassword,
     meta: { public: true }
   },
   {
@@ -40,8 +47,8 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !token) {
     // 需要登录但未登录，跳转到登录页
     next('/login')
-  } else if ((to.path === '/login' || to.path === '/register') && token) {
-    // 已登录但访问登录/注册页，跳转到云盘
+  } else if ((to.path === '/login' || to.path === '/register' || to.path === '/forgot-password') && token) {
+    // 已登录但访问登录/注册/找回密码页，跳转到云盘
     next('/disk')
   } else {
     next()

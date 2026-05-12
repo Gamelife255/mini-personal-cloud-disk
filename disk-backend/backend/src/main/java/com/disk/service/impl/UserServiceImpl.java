@@ -2,6 +2,7 @@ package com.disk.service.impl;
 
 import com.disk.entity.User;
 import com.disk.mapper.UserMapper;
+import com.disk.service.EmailService;
 import com.disk.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -14,6 +15,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
+
+    @Autowired
+    private EmailService emailService;
 
     @Override
     public User login(String username, String password) {
@@ -43,6 +47,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public User findByEmail(String email) {
+        return userMapper.findByEmail(email);
+    }
+
+    @Override
     public User update(User user) {
         user.setUpdatedAt(System.currentTimeMillis());
         userMapper.update(user);
@@ -52,5 +61,41 @@ public class UserServiceImpl implements UserService {
     @Override
     public int delete(Long id) {
         return userMapper.delete(id);
+    }
+
+    @Override
+    public void sendVerificationCode(String email) {
+        emailService.sendVerificationCode(email);
+    }
+
+    @Override
+    public User registerWithCode(User user, String code) {
+        if (!emailService.verifyCode(user.getEmail(), code)) {
+            throw new RuntimeException("验证码错误或已过期");
+        }
+        return register(user);
+    }
+
+    @Override
+    public void sendPasswordResetCode(String email) {
+        User user = userMapper.findByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("该邮箱未注册");
+        }
+        emailService.sendPasswordResetCode(email);
+    }
+
+    @Override
+    public void resetPassword(String email, String code, String newPassword) {
+        if (!emailService.verifyCode(email, code)) {
+            throw new RuntimeException("验证码错误或已过期");
+        }
+        User user = userMapper.findByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("该邮箱未注册");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setUpdatedAt(System.currentTimeMillis());
+        userMapper.update(user);
     }
 }
