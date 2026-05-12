@@ -348,17 +348,38 @@ const filterFiles = (type) => {
 const downloadFile = async (file) => {
   try {
     const blob = await downloadFileApi(file.id)
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = file.fileName
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-    ElMessage.success('下载成功')
+    
+    // 检查浏览器是否支持自定义保存路径
+    if ('showSaveFilePicker' in window) {
+      // 使用现代浏览器的文件保存 API
+      const handle = await window.showSaveFilePicker({
+        suggestedName: file.fileName,
+        types: [{
+          description: '文件',
+          accept: { '*/*': [] }
+        }]
+      })
+      const writable = await handle.createWritable()
+      await writable.write(blob)
+      await writable.close()
+      ElMessage.success('下载成功')
+    } else {
+      // 传统下载方式
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = file.fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      ElMessage.success('下载成功')
+    }
   } catch (error) {
-    ElMessage.error('下载失败')
+    // 用户取消选择时不报错
+    if (error.name !== 'AbortError') {
+      ElMessage.error('下载失败')
+    }
   }
 }
 
