@@ -17,4 +17,7 @@ public interface FileMapper {
     int update(File file);
     int delete(Long id);
     Long sumFileSizeByUserId(Long userId);
+    List<File> findAll();
+    List<File> findByUserIdAndParentIdIgnoreOwnership(@Param("userId") Long userId, @Param("parentId") Long parentId,
+                                                       @Param("sortBy") String sortBy, @Param("sortOrder") String sortOrder);
 }

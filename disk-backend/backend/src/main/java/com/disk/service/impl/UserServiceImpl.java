@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class UserServiceImpl implements UserService {
     @Autowired
@@ -23,6 +25,9 @@ public class UserServiceImpl implements UserService {
     public User login(String username, String password) {
         User user = userMapper.findByUsername(username);
         if (user != null && passwordEncoder.matches(password, user.getPassword())) {
+            if (user.getStatus() != null && user.getStatus() == 0) {
+                throw new RuntimeException("账户已被禁用");
+            }
             return user;
         }
         return null;
@@ -34,6 +39,8 @@ public class UserServiceImpl implements UserService {
         if (existingUser != null) {
             throw new RuntimeException("用户名已存在");
         }
+        user.setRole(user.getRole() != null ? user.getRole() : "user");
+        user.setStatus(user.getStatus() != null ? user.getStatus() : 1);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setCreatedAt(System.currentTimeMillis());
         user.setUpdatedAt(System.currentTimeMillis());
@@ -97,5 +104,20 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setUpdatedAt(System.currentTimeMillis());
         userMapper.update(user);
+    }
+
+    @Override
+    public List<User> findAll() {
+        return userMapper.findAll();
+    }
+
+    @Override
+    public int updateStatus(Long id, Integer status) {
+        return userMapper.updateStatus(id, status, System.currentTimeMillis());
+    }
+
+    @Override
+    public int adminResetPassword(Long id, String newPassword) {
+        return userMapper.updatePassword(id, passwordEncoder.encode(newPassword), System.currentTimeMillis());
     }
 }

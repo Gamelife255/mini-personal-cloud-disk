@@ -39,6 +39,12 @@
             <el-icon><More /></el-icon>
             <span>其他</span>
           </el-menu-item>
+          <template v-if="isAdmin">
+            <el-menu-item index="admin" @click="goToAdmin">
+              <el-icon><Setting /></el-icon>
+              <span>管理后台</span>
+            </el-menu-item>
+          </template>
         </el-menu>
 
         <!-- 存储空间 -->
@@ -215,13 +221,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { uploadFile, createFolder as createFolderApi, getFileList, downloadFile as downloadFileApi, deleteFile as deleteFileApi, getSpaceUsage, previewFile as previewFileApi, batchDelete as batchDeleteApi, batchDownload as batchDownloadApi, batchMove as batchMoveApi } from '../api/file'
 import { useDarkMode } from '../composables/useDarkMode'
 import {
-  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View, Sort, Sunny, Moon
+  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View, Sort, Sunny, Moon, Setting
 } from '@element-plus/icons-vue'
 
 const { isDark, toggle: toggleTheme } = useDarkMode()
 
 const router = useRouter()
 const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
+const isAdmin = computed(() => user.value?.role === 'admin')
 
 // 状态
 const loading = ref(false)
@@ -621,6 +628,10 @@ const handleBatchMove = async () => {
   } catch (error) {
     ElMessage.error('批量移动失败')
   }
+}
+
+const goToAdmin = () => {
+  router.push('/admin')
 }
 
 // 退出登录

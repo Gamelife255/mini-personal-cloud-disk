@@ -17,18 +17,25 @@ public class UserController {
 
     @PostMapping("/login")
     public Object login(@RequestBody User user) {
-        User result = userService.login(user.getUsername(), user.getPassword());
-        if (result != null) {
-            String token = JwtUtil.generateToken(result.getId(), result.getUsername());
-            Map<String, Object> response = new HashMap<>();
-            response.put("token", token);
-            response.put("user", result);
-            return response;
+        try {
+            User result = userService.login(user.getUsername(), user.getPassword());
+            if (result != null) {
+                String token = JwtUtil.generateToken(result.getId(), result.getUsername(), result.getRole());
+                Map<String, Object> response = new HashMap<>();
+                response.put("token", token);
+                response.put("user", result);
+                return response;
+            }
+            Map<String, Object> error = new HashMap<>();
+            error.put("code", 401);
+            error.put("message", "用户名或密码错误");
+            return error;
+        } catch (RuntimeException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("code", 403);
+            error.put("message", e.getMessage());
+            return error;
         }
-        Map<String, Object> error = new HashMap<>();
-        error.put("code", 401);
-        error.put("message", "登录失败");
-        return error;
     }
 
     @PostMapping("/register")
@@ -45,7 +52,7 @@ public class UserController {
             user.setEmail(email);
 
             User result = userService.registerWithCode(user, code);
-            String token = JwtUtil.generateToken(result.getId(), result.getUsername());
+            String token = JwtUtil.generateToken(result.getId(), result.getUsername(), result.getRole());
             Map<String, Object> response = new HashMap<>();
             response.put("code", 200);
             response.put("token", token);

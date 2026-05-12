@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn --version)",
+      "Bash(java -cp '__TRACKED_VAR__;target/test-classes' com.disk.BcryptGen)",
+      "Bash(npm run *)"
+    ]
+  }
+}

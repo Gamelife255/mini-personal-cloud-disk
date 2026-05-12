@@ -73,4 +73,13 @@
         SELECT COALESCE(SUM(file_size), 0) FROM files WHERE user_id = #{userId} AND is_folder = 0
     </select>
 
+    <select id="findAll" resultMap="FileResultMap">
+        SELECT * FROM files ORDER BY updated_at DESC
+    </select>
+
+    <select id="findByUserIdAndParentIdIgnoreOwnership" resultMap="FileResultMap">
+        SELECT * FROM files WHERE user_id = #{userId} AND parent_id = #{parentId}
+        ORDER BY is_folder DESC, updated_at DESC
+    </select>
+
 </mapper>

@@ -7,6 +7,8 @@
         <result property="username" column="username" />
         <result property="password" column="password" />
         <result property="email" column="email" />
+        <result property="role" column="role" />
+        <result property="status" column="status" />
         <result property="createdAt" column="created_at" />
         <result property="updatedAt" column="updated_at" />
     </resultMap>
@@ -23,15 +25,28 @@
         SELECT * FROM users WHERE id = #{id}
     </select>
 
-    <insert id="insert" parameterType="com.disk.entity.User">
-        INSERT INTO users (username, password, email, created_at, updated_at)
-        VALUES (#{username}, #{password}, #{email}, #{createdAt}, #{updatedAt})
+    <select id="findAll" resultMap="UserResultMap">
+        SELECT * FROM users ORDER BY id ASC
+    </select>
+
+    <insert id="insert" parameterType="com.disk.entity.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (username, password, email, role, status, created_at, updated_at)
+        VALUES (#{username}, #{password}, #{email}, #{role}, #{status}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="com.disk.entity.User">
         UPDATE users
-        SET username = #{username}, password = #{password}, email = #{email}, updated_at = #{updatedAt}
+        SET username = #{username}, password = #{password}, email = #{email},
+            status = #{status}, updated_at = #{updatedAt}
         WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE users SET status = #{status}, updated_at = #{updatedAt} WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE users SET password = #{password}, updated_at = #{updatedAt} WHERE id = #{id}
     </update>
 
     <delete id="delete" parameterType="java.lang.Long">

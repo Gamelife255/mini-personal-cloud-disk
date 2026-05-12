@@ -13,10 +13,11 @@ public class JwtUtil {
     private static final SecretKey SECRET_KEY = Keys.hmacShaKeyFor("disk_secret_key_12345678901234567890123456".getBytes());
     private static final long EXPIRATION_TIME = 86400000L;
 
-    public static String generateToken(Long userId, String username) {
+    public static String generateToken(Long userId, String username, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
+        claims.put("role", role);
         return Jwts.builder()
                 .claims(claims)
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
@@ -40,6 +41,11 @@ public class JwtUtil {
     public static String getUsernameFromToken(String token) {
         Claims claims = parseToken(token);
         return claims.get("username", String.class);
+    }
+
+    public static String getRoleFromToken(String token) {
+        Claims claims = parseToken(token);
+        return claims.get("role", String.class);
     }
 
     public static boolean isTokenExpired(String token) {
