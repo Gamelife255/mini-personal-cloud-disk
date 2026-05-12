@@ -125,6 +125,7 @@ const sendCode = async () => {
       ElMessage.error(response.message || '发送失败')
     }
   } catch (error) {
+    console.error('发送验证码失败:', error)
     ElMessage.error('发送验证码失败')
   } finally {
     sending.value = false

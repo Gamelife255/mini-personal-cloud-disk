@@ -5,6 +5,7 @@ import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
@@ -20,19 +21,17 @@ public class EmailService {
 
     public String sendVerificationCode(String toEmail) {
         String code = generateCode();
-        String subject = "【个人云盘】邮箱验证码";
-        String content = buildEmailContent(code, "注册账号");
-        sendHtmlMail(toEmail, subject, content);
         codeStore.save(toEmail, code);
+        String content = buildEmailContent(code, "注册账号");
+        sendHtmlMailAsync(toEmail, "【个人云盘】邮箱验证码", content);
         return code;
     }
 
     public String sendPasswordResetCode(String toEmail) {
         String code = generateCode();
-        String subject = "【个人云盘】密码重置验证码";
-        String content = buildEmailContent(code, "重置密码");
-        sendHtmlMail(toEmail, subject, content);
         codeStore.save(toEmail, code);
+        String content = buildEmailContent(code, "重置密码");
+        sendHtmlMailAsync(toEmail, "【个人云盘】密码重置验证码", content);
         return code;
     }
 
@@ -41,7 +40,7 @@ public class EmailService {
     }
 
     private String generateCode() {
-        return String.format("%06d", new Random().nextInt(999999));
+        return String.format("%06d", new Random().nextInt(1000000));
     }
 
     private String buildEmailContent(String code, String purpose) {
@@ -57,10 +56,11 @@ public class EmailService {
                 """.formatted(purpose, code);
     }
 
-    private void sendHtmlMail(String to, String subject, String html) {
+    @Async
+    public void sendHtmlMailAsync(String to, String subject, String html) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
             helper.setFrom("2055126913@qq.com");
             helper.setTo(to);
             helper.setSubject(subject);
