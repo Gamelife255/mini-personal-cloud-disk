@@ -6,21 +6,21 @@
         <h1>注册账号</h1>
       </div>
       
-      <el-form ref="form" :model="form" :rules="rules" label-width="80px">
+      <el-form ref="registerFormRef" :model="registerForm" :rules="rules" label-width="80px">
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="请输入用户名" />
+          <el-input v-model="registerForm.username" placeholder="请输入用户名" />
         </el-form-item>
         
         <el-form-item label="密码" prop="password">
-          <el-input type="password" v-model="form.password" placeholder="请输入密码" />
+          <el-input type="password" v-model="registerForm.password" placeholder="请输入密码" />
         </el-form-item>
         
         <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input type="password" v-model="form.confirmPassword" placeholder="请再次输入密码" />
+          <el-input type="password" v-model="registerForm.confirmPassword" placeholder="请再次输入密码" />
         </el-form-item>
         
         <el-form-item label="邮箱" prop="email">
-          <el-input v-model="form.email" placeholder="请输入邮箱" />
+          <el-input v-model="registerForm.email" placeholder="请输入邮箱" />
         </el-form-item>
         
         <el-form-item>
@@ -47,7 +47,7 @@ import { ElMessage } from 'element-plus'
 const router = useRouter()
 const loading = ref(false)
 
-const form = reactive({
+const registerForm = reactive({
   username: '',
   password: '',
   confirmPassword: '',
@@ -55,7 +55,7 @@ const form = reactive({
 })
 
 const validateConfirmPassword = (rule, value, callback) => {
-  if (value !== form.password) {
+  if (value !== registerForm.password) {
     callback(new Error('两次输入的密码不一致'))
   } else {
     callback()
@@ -85,9 +85,9 @@ const handleRegister = async () => {
   loading.value = true
   try {
     const response = await register({
-      username: form.username,
-      password: form.password,
-      email: form.email
+      username: registerForm.username,
+      password: registerForm.password,
+      email: registerForm.email
     })
     if (response.token) {
       localStorage.setItem('token', response.token)

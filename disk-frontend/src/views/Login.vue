@@ -6,13 +6,13 @@
         <h1>个人云盘</h1>
       </div>
       
-      <el-form ref="form" :model="form" :rules="rules" label-width="80px">
+      <el-form ref="loginFormRef" :model="loginForm" :rules="rules" label-width="80px">
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="请输入用户名" />
+          <el-input v-model="loginForm.username" placeholder="请输入用户名" />
         </el-form-item>
         
         <el-form-item label="密码" prop="password">
-          <el-input type="password" v-model="form.password" placeholder="请输入密码" />
+          <el-input type="password" v-model="loginForm.password" placeholder="请输入密码" />
         </el-form-item>
         
         <el-form-item>
@@ -39,7 +39,7 @@ import { ElMessage } from 'element-plus'
 const router = useRouter()
 const loading = ref(false)
 
-const form = reactive({
+const loginForm = reactive({
   username: '',
   password: ''
 })
@@ -56,7 +56,7 @@ const rules = {
 const handleLogin = async () => {
   loading.value = true
   try {
-    const response = await login(form)
+    const response = await login(loginForm)
     if (response.token) {
       localStorage.setItem('token', response.token)
       localStorage.setItem('user', JSON.stringify(response.user))

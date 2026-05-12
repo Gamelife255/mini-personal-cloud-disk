@@ -9,6 +9,11 @@ spring:
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+  # SQL初始化配置
+  sql:
+    init:
+      mode: always
+
   # 文件上传配置
   servlet:
     multipart:
