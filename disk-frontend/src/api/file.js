@@ -64,3 +64,29 @@ export function previewFile(id) {
     responseType: 'blob'
   })
 }
+
+export function batchDelete(ids) {
+  return request({
+    url: '/api/file/batch-delete',
+    method: 'post',
+    data: { ids }
+  })
+}
+
+export function batchDownload(ids) {
+  return request({
+    url: '/api/file/batch-download',
+    method: 'get',
+    params: { ids },
+    paramsSerializer: () => ids.map(id => `ids=${id}`).join('&'),
+    responseType: 'blob'
+  })
+}
+
+export function batchMove(ids, targetParentId) {
+  return request({
+    url: '/api/file/batch-move',
+    method: 'post',
+    data: { ids, targetParentId }
+  })
+}

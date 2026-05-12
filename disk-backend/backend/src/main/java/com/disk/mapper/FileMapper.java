@@ -8,6 +8,7 @@ import java.util.List;
 @Mapper
 public interface FileMapper {
     File findById(Long id);
+    List<File> findByIds(List<Long> ids);
     List<File> findByUserId(Long userId);
     List<File> findByParentId(Long parentId);
     int insert(File file);

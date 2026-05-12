@@ -56,6 +56,18 @@
           <el-button @click="showNewFolder = true">
             <el-icon><FolderAdd /></el-icon>新建文件夹
           </el-button>
+          <template v-if="selectedFiles.length > 0">
+            <span class="selected-count">已选 {{ selectedFiles.length }} 项</span>
+            <el-button type="success" @click="handleBatchDownload">
+              <el-icon><Download /></el-icon>批量下载
+            </el-button>
+            <el-button type="warning" @click="showMoveDialog = true">
+              <el-icon><Sort /></el-icon>批量移动
+            </el-button>
+            <el-button type="danger" @click="handleBatchDelete">
+              <el-icon><Delete /></el-icon>批量删除
+            </el-button>
+          </template>
           <el-input
             v-model="searchKeyword"
             placeholder="搜索文件"
@@ -77,7 +89,8 @@
         </el-breadcrumb>
 
         <!-- 文件列表 -->
-        <el-table :data="filteredFiles" style="width: 100%" v-loading="loading">
+        <el-table :data="filteredFiles" style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
+          <el-table-column type="selection" width="50" />
           <el-table-column label="文件名" min-width="300">
             <template #default="{ row }">
               <div class="file-name" @click="handleFileClick(row)">
@@ -168,6 +181,22 @@
         <el-button type="primary" @click="downloadFile(previewFileInfo)">下载</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量移动对话框 -->
+    <el-dialog v-model="showMoveDialog" title="移动到" width="450px">
+      <p class="move-hint">将选中的 {{ selectedFiles.length }} 个项目移动到：</p>
+      <el-radio-group v-model="moveTargetFolderId" class="move-folder-list">
+        <el-radio :value="0" class="move-folder-item">根目录</el-radio>
+        <el-radio v-for="folder in availableFolders" :key="folder.id" :value="folder.id" class="move-folder-item">
+          {{ folder.fileName }}
+        </el-radio>
+      </el-radio-group>
+      <p v-if="availableFolders.length === 0" class="no-folders">暂无可用文件夹（当前目录下没有子文件夹）</p>
+      <template #footer>
+        <el-button @click="showMoveDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleBatchMove" :disabled="moveTargetFolderId === null || moveTargetFolderId === undefined">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -175,9 +204,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { uploadFile, createFolder as createFolderApi, getFileList, downloadFile as downloadFileApi, deleteFile as deleteFileApi, getSpaceUsage, previewFile as previewFileApi } from '../api/file'
-import { 
-  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View 
+import { uploadFile, createFolder as createFolderApi, getFileList, downloadFile as downloadFileApi, deleteFile as deleteFileApi, getSpaceUsage, previewFile as previewFileApi, batchDelete as batchDeleteApi, batchDownload as batchDownloadApi, batchMove as batchMoveApi } from '../api/file'
+import {
+  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View, Sort
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -195,6 +224,17 @@ const showNewFolder = ref(false)
 const newFolderName = ref('')
 const fileList = ref([])
 const uploading = ref(false)
+
+// 批量操作
+const selectedFiles = ref([])
+const showMoveDialog = ref(false)
+const moveTargetFolderId = ref(null)
+
+// 可用于移动的目标文件夹（排除选中的文件夹本身）
+const availableFolders = computed(() => {
+  const selectedIds = new Set(selectedFiles.value.map(f => f.id))
+  return files.value.filter(f => f.isFolder && !selectedIds.has(f.id))
+})
 
 // 存储空间
 const usedStorage = ref('0 B')
@@ -484,6 +524,82 @@ const createFolder = async () => {
   }
 }
 
+// 表格选择变化
+const handleSelectionChange = (rows) => {
+  selectedFiles.value = rows
+}
+
+// 批量下载
+const handleBatchDownload = async () => {
+  try {
+    const ids = selectedFiles.value.filter(f => !f.isFolder).map(f => f.id)
+    if (ids.length === 0) {
+      ElMessage.warning('没有可下载的文件（文件夹不支持批量下载）')
+      return
+    }
+    const blob = await batchDownloadApi(ids)
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'files.zip'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('下载成功')
+  } catch (error) {
+    ElMessage.error('批量下载失败')
+  }
+}
+
+// 批量删除
+const handleBatchDelete = async () => {
+  try {
+    await ElMessageBox.confirm(`确定要删除选中的 ${selectedFiles.value.length} 个文件吗？`, '批量删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const ids = selectedFiles.value.map(f => f.id)
+    const response = await batchDeleteApi(ids)
+    if (response.code === 200) {
+      ElMessage.success(response.message || '删除成功')
+      selectedFiles.value = []
+      loadFiles()
+      loadSpaceUsage()
+    } else {
+      ElMessage.error(response.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('批量删除失败')
+    }
+  }
+}
+
+// 批量移动
+const handleBatchMove = async () => {
+  if (moveTargetFolderId.value === null || moveTargetFolderId.value === undefined) {
+    ElMessage.warning('请选择目标文件夹')
+    return
+  }
+  try {
+    const ids = selectedFiles.value.map(f => f.id)
+    const response = await batchMoveApi(ids, moveTargetFolderId.value)
+    if (response.code === 200) {
+      ElMessage.success(response.message || '移动成功')
+      showMoveDialog.value = false
+      moveTargetFolderId.value = null
+      selectedFiles.value = []
+      loadFiles()
+    } else {
+      ElMessage.error(response.message || '移动失败')
+    }
+  } catch (error) {
+    ElMessage.error('批量移动失败')
+  }
+}
+
 // 退出登录
 const logout = () => {
   localStorage.removeItem('token')
@@ -649,5 +765,38 @@ onMounted(() => {
 
 .preview-icon {
   margin-bottom: 16px;
+}
+
+/* 批量操作 */
+.selected-count {
+  color: #409EFF;
+  font-weight: bold;
+  align-self: center;
+}
+
+.move-hint {
+  color: #606266;
+  margin-bottom: 16px;
+}
+
+.move-folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.move-folder-item {
+  padding: 8px 12px;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  width: 100%;
+}
+
+.no-folders {
+  color: #909399;
+  text-align: center;
+  padding: 24px 0;
 }
 </style>

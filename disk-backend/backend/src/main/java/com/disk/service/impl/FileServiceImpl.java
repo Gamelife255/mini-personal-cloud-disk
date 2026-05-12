@@ -32,6 +32,11 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    public List<File> findByIds(List<Long> ids) {
+        return fileMapper.findByIds(ids);
+    }
+
+    @Override
     public File rename(Long id, String newName) {
         File file = fileMapper.findById(id);
         if (file != null) {
@@ -40,6 +45,11 @@ public class FileServiceImpl implements FileService {
             fileMapper.update(file);
         }
         return file;
+    }
+
+    @Override
+    public int update(File file) {
+        return fileMapper.update(file);
     }
 
     @Override

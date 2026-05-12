@@ -20,10 +20,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import javax.imageio.ImageIO;
 
 @RestController
@@ -350,6 +353,153 @@ public class FileController {
             result.put("message", "删除失败: " + e.getMessage());
         }
         
+        return result;
+    }
+
+    @PostMapping("/batch-delete")
+    public Map<String, Object> batchDelete(@RequestBody Map<String, List<Long>> params, HttpServletRequest request) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            Long userId = JwtUtil.getUserIdFromToken(token);
+
+            if (userId == null) {
+                result.put("code", 401);
+                result.put("message", "未登录");
+                return result;
+            }
+
+            List<Long> ids = params.get("ids");
+            if (ids == null || ids.isEmpty()) {
+                result.put("code", 400);
+                result.put("message", "请选择要删除的文件");
+                return result;
+            }
+
+            List<com.disk.entity.File> files = fileService.findByIds(ids);
+            int deleted = 0;
+            for (com.disk.entity.File fileInfo : files) {
+                if (!fileInfo.getUserId().equals(userId)) {
+                    continue;
+                }
+                if (!fileInfo.getIsFolder().equals(1)) {
+                    Path filePath = Paths.get(fileInfo.getFilePath());
+                    Files.deleteIfExists(filePath);
+                    // 同时删除预览图
+                    if (fileInfo.getFileHash() != null && !fileInfo.getFileHash().isEmpty()) {
+                        Files.deleteIfExists(Paths.get(fileInfo.getFileHash()));
+                    }
+                }
+                fileService.delete(fileInfo.getId());
+                deleted++;
+            }
+
+            result.put("code", 200);
+            result.put("message", "成功删除 " + deleted + " 个文件");
+            result.put("data", Map.of("deleted", deleted, "total", ids.size()));
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", "批量删除失败: " + e.getMessage());
+        }
+        return result;
+    }
+
+    @GetMapping("/batch-download")
+    public ResponseEntity<byte[]> batchDownload(@RequestParam List<Long> ids, HttpServletRequest request) {
+        try {
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            Long userId = JwtUtil.getUserIdFromToken(token);
+
+            if (userId == null) {
+                return ResponseEntity.status(401).build();
+            }
+
+            List<com.disk.entity.File> files = fileService.findByIds(ids);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (ZipOutputStream zos = new ZipOutputStream(baos)) {
+                for (com.disk.entity.File fileInfo : files) {
+                    if (!fileInfo.getUserId().equals(userId) || fileInfo.getIsFolder().equals(1)) {
+                        continue;
+                    }
+                    Path filePath = Paths.get(fileInfo.getFilePath());
+                    if (!Files.exists(filePath)) {
+                        continue;
+                    }
+                    zos.putNextEntry(new ZipEntry(fileInfo.getFileName()));
+                    Files.copy(filePath, zos);
+                    zos.closeEntry();
+                }
+            }
+
+            byte[] zipContent = baos.toByteArray();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "files.zip");
+            headers.setContentLength(zipContent.length);
+
+            return ResponseEntity.ok().headers(headers).body(zipContent);
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/batch-move")
+    public Map<String, Object> batchMove(@RequestBody Map<String, Object> params, HttpServletRequest request) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            Long userId = JwtUtil.getUserIdFromToken(token);
+
+            if (userId == null) {
+                result.put("code", 401);
+                result.put("message", "未登录");
+                return result;
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Integer> rawIds = (List<Integer>) params.get("ids");
+            List<Long> ids = new ArrayList<>();
+            for (Integer id : rawIds) {
+                ids.add(id.longValue());
+            }
+            Long targetParentId = ((Number) params.get("targetParentId")).longValue();
+
+            if (ids.isEmpty()) {
+                result.put("code", 400);
+                result.put("message", "请选择要移动的文件");
+                return result;
+            }
+
+            List<com.disk.entity.File> files = fileService.findByIds(ids);
+            int moved = 0;
+            for (com.disk.entity.File fileInfo : files) {
+                if (!fileInfo.getUserId().equals(userId)) {
+                    continue;
+                }
+                fileInfo.setParentId(targetParentId);
+                fileInfo.setUpdatedAt(System.currentTimeMillis());
+                fileService.update(fileInfo);
+                moved++;
+            }
+
+            result.put("code", 200);
+            result.put("message", "成功移动 " + moved + " 个文件");
+            result.put("data", Map.of("moved", moved, "total", ids.size()));
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", "批量移动失败: " + e.getMessage());
+        }
         return result;
     }
 
