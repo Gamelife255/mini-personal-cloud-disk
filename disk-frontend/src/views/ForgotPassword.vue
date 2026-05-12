@@ -1,6 +1,9 @@
 <template>
   <div class="forgot-container">
     <div class="forgot-box">
+      <el-button link class="theme-toggle" @click="toggleTheme">
+        <el-icon :size="20"><Sunny v-if="isDark" /><Moon v-else /></el-icon>
+      </el-button>
       <div class="logo">
         <span class="icon">☁️</span>
         <h1>找回密码</h1>
@@ -48,6 +51,10 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { sendResetCode, resetPassword } from '../api/user'
 import { ElMessage } from 'element-plus'
+import { useDarkMode } from '../composables/useDarkMode'
+import { Sunny, Moon } from '@element-plus/icons-vue'
+
+const { isDark, toggle: toggleTheme } = useDarkMode()
 
 const router = useRouter()
 const loading = ref(false)
@@ -151,12 +158,19 @@ const goToLogin = () => {
 }
 
 .forgot-box {
-  background: white;
+  position: relative;
+  background: var(--el-bg-color);
   padding: 40px;
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
   width: 100%;
   max-width: 420px;
+}
+
+.theme-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
 }
 
 .logo {
@@ -172,7 +186,7 @@ const goToLogin = () => {
 
 h1 {
   font-size: 24px;
-  color: #333;
+  color: var(--el-text-color-primary);
   margin: 0;
 }
 
@@ -185,13 +199,7 @@ h1 {
 .login-link {
   text-align: center;
   margin-top: 20px;
-  color: #999;
-}
-
-.login-link button {
-  padding: 0;
-  margin-left: 5px;
-  color: #f5576c;
+  color: var(--el-text-color-secondary);
 }
 
 .code-row {

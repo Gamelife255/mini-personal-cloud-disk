@@ -31,8 +31,25 @@
         SELECT * FROM files WHERE user_id = #{userId} ORDER BY created_at DESC
     </select>
 
-    <select id="findByParentId" resultMap="FileResultMap">
-        SELECT * FROM files WHERE parent_id = #{parentId} ORDER BY is_folder DESC, created_at DESC
+    <select id="findByUserIdAndParentId" resultMap="FileResultMap">
+        SELECT * FROM files WHERE user_id = #{userId} AND parent_id = #{parentId}
+        <choose>
+            <when test="sortBy == 'fileName'">
+                ORDER BY is_folder DESC, file_name ${sortOrder}
+            </when>
+            <when test="sortBy == 'fileSize'">
+                ORDER BY is_folder DESC, file_size ${sortOrder}
+            </when>
+            <when test="sortBy == 'fileType'">
+                ORDER BY is_folder DESC, file_type ${sortOrder}
+            </when>
+            <when test="sortBy == 'updatedAt'">
+                ORDER BY is_folder DESC, updated_at ${sortOrder}
+            </when>
+            <otherwise>
+                ORDER BY is_folder DESC, updated_at DESC
+            </otherwise>
+        </choose>
     </select>
 
     <insert id="insert" parameterType="com.disk.entity.File" useGeneratedKeys="true" keyProperty="id">

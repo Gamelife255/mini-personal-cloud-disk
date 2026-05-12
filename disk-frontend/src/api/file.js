@@ -27,11 +27,11 @@ export function createFolder(folderName, parentId) {
   })
 }
 
-export function getFileList(parentId) {
+export function getFileList(parentId, sortBy = 'updatedAt', sortOrder = 'DESC') {
   return request({
     url: '/api/file/list',
     method: 'get',
-    params: { parentId }
+    params: { parentId, sortBy, sortOrder }
   })
 }
 

@@ -3,6 +3,14 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
+
+onMounted(() => {
+  const saved = localStorage.getItem('theme')
+  if (saved === 'dark') {
+    document.documentElement.classList.add('dark')
+  }
+})
 </script>
 
 <style>
@@ -14,7 +22,8 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: #f5f7fa;
+  background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
   min-height: 100vh;
 }
 </style>

@@ -6,6 +6,9 @@
         <span class="logo">☁️ 个人云盘</span>
       </div>
       <div class="header-right">
+        <el-button link class="theme-toggle" @click="toggleTheme">
+          <el-icon :size="18"><Sunny v-if="isDark" /><Moon v-else /></el-icon>
+        </el-button>
         <span class="username">{{ user?.username }}</span>
         <el-button link @click="logout">退出登录</el-button>
       </div>
@@ -89,9 +92,9 @@
         </el-breadcrumb>
 
         <!-- 文件列表 -->
-        <el-table :data="filteredFiles" style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
+        <el-table :data="filteredFiles" style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange" @sort-change="handleSortChange">
           <el-table-column type="selection" width="50" />
-          <el-table-column label="文件名" min-width="300">
+          <el-table-column label="文件名" min-width="300" sortable="custom" prop="fileName">
             <template #default="{ row }">
               <div class="file-name" @click="handleFileClick(row)">
                 <el-icon :size="24" class="file-icon">
@@ -105,12 +108,17 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="大小" width="120">
+          <el-table-column label="类型" width="100" sortable="custom" prop="fileType">
+            <template #default="{ row }">
+              {{ row.isFolder ? '文件夹' : (row.fileType || '未知') }}
+            </template>
+          </el-table-column>
+          <el-table-column label="大小" width="120" sortable="custom" prop="fileSize">
             <template #default="{ row }">
               {{ row.isFolder ? '-' : formatFileSize(row.fileSize) }}
             </template>
           </el-table-column>
-          <el-table-column label="修改时间" width="180">
+          <el-table-column label="修改时间" width="180" sortable="custom" prop="updatedAt">
             <template #default="{ row }">
               {{ formatDate(row.updatedAt) }}
             </template>
@@ -205,9 +213,12 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { uploadFile, createFolder as createFolderApi, getFileList, downloadFile as downloadFileApi, deleteFile as deleteFileApi, getSpaceUsage, previewFile as previewFileApi, batchDelete as batchDeleteApi, batchDownload as batchDownloadApi, batchMove as batchMoveApi } from '../api/file'
+import { useDarkMode } from '../composables/useDarkMode'
 import {
-  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View, Sort
+  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View, Sort, Sunny, Moon
 } from '@element-plus/icons-vue'
+
+const { isDark, toggle: toggleTheme } = useDarkMode()
 
 const router = useRouter()
 const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
@@ -224,6 +235,8 @@ const showNewFolder = ref(false)
 const newFolderName = ref('')
 const fileList = ref([])
 const uploading = ref(false)
+const sortBy = ref('updatedAt')
+const sortOrder = ref('DESC')
 
 // 批量操作
 const selectedFiles = ref([])
@@ -310,7 +323,7 @@ const filteredFiles = computed(() => {
 const loadFiles = async () => {
   loading.value = true
   try {
-    const response = await getFileList(currentFolder.value)
+    const response = await getFileList(currentFolder.value, sortBy.value, sortOrder.value)
     if (response.code === 200) {
       files.value = response.data.map(file => ({
         id: file.id,
@@ -529,6 +542,16 @@ const handleSelectionChange = (rows) => {
   selectedFiles.value = rows
 }
 
+// 排序变化
+const handleSortChange = ({ prop, order }) => {
+  if (prop) {
+    sortBy.value = prop
+    // order: 'ascending' | 'descending' | null
+    sortOrder.value = order === 'ascending' ? 'ASC' : 'DESC'
+    loadFiles()
+  }
+}
+
 // 批量下载
 const handleBatchDownload = async () => {
   try {
@@ -632,15 +655,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  background-color: var(--el-bg-color);
+  border-bottom: 1px solid var(--el-border-color-lighter);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .header-left .logo {
   font-size: 20px;
   font-weight: bold;
-  color: #409EFF;
+  color: var(--el-color-primary);
 }
 
 .header-right {
@@ -649,8 +672,12 @@ onMounted(() => {
   gap: 16px;
 }
 
+.theme-toggle {
+  font-size: 16px;
+}
+
 .username {
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 
 .disk-main {
@@ -659,8 +686,8 @@ onMounted(() => {
 }
 
 .disk-sidebar {
-  background-color: #fff;
-  border-right: 1px solid #e4e7ed;
+  background-color: var(--el-bg-color);
+  border-right: 1px solid var(--el-border-color-lighter);
   display: flex;
   flex-direction: column;
 }
@@ -671,25 +698,25 @@ onMounted(() => {
 
 .storage-info {
   padding: 20px;
-  border-top: 1px solid #e4e7ed;
+  border-top: 1px solid var(--el-border-color-lighter);
   margin-top: auto;
 }
 
 .storage-title {
   font-size: 14px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   margin-bottom: 10px;
 }
 
 .storage-text {
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   margin-top: 8px;
   text-align: center;
 }
 
 .disk-content {
-  background-color: #f5f7fa;
+  background-color: var(--el-bg-color-page);
   padding: 20px;
   overflow-y: auto;
 }
@@ -717,7 +744,7 @@ onMounted(() => {
 }
 
 .file-name:hover {
-  color: #409EFF;
+  color: var(--el-color-primary);
 }
 
 .file-icon {
@@ -729,7 +756,7 @@ onMounted(() => {
 }
 
 :deep(.el-breadcrumb__item:hover) {
-  color: #409EFF;
+  color: var(--el-color-primary);
 }
 
 /* 预览对话框样式 */
@@ -738,7 +765,7 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   min-height: 400px;
-  background-color: #f5f5f5;
+  background-color: var(--el-fill-color-lighter);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -760,7 +787,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 
 .preview-icon {
@@ -769,13 +796,13 @@ onMounted(() => {
 
 /* 批量操作 */
 .selected-count {
-  color: #409EFF;
+  color: var(--el-color-primary);
   font-weight: bold;
   align-self: center;
 }
 
 .move-hint {
-  color: #606266;
+  color: var(--el-text-color-regular);
   margin-bottom: 16px;
 }
 
@@ -789,13 +816,13 @@ onMounted(() => {
 
 .move-folder-item {
   padding: 8px 12px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--el-border-color-lighter);
   border-radius: 6px;
   width: 100%;
 }
 
 .no-folders {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   text-align: center;
   padding: 24px 0;
 }

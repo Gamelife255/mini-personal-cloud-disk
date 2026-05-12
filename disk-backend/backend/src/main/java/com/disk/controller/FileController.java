@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -288,30 +289,43 @@ public class FileController {
         }
     }
 
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("fileName", "fileSize", "fileType", "updatedAt");
+    private static final Set<String> ALLOWED_SORT_ORDERS = Set.of("ASC", "DESC");
+
     @GetMapping("/list")
     public Map<String, Object> list(
             @RequestParam(required = false) Long parentId,
+            @RequestParam(defaultValue = "updatedAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortOrder,
             HttpServletRequest request) {
         Map<String, Object> result = new HashMap<>();
-        
+
         try {
             String token = request.getHeader("Authorization");
             if (token != null && token.startsWith("Bearer ")) {
                 token = token.substring(7);
             }
             Long userId = JwtUtil.getUserIdFromToken(token);
-            
+
             if (userId == null) {
                 result.put("code", 401);
                 result.put("message", "未登录");
                 return result;
             }
-            
+
             if (parentId == null) {
                 parentId = 0L;
             }
-            
-            List<File> files = fileService.list(userId, parentId);
+
+            // 白名单校验排序参数
+            if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+                sortBy = "updatedAt";
+            }
+            if (!ALLOWED_SORT_ORDERS.contains(sortOrder.toUpperCase())) {
+                sortOrder = "DESC";
+            }
+
+            List<File> files = fileService.list(userId, parentId, sortBy, sortOrder.toUpperCase());
             
             result.put("code", 200);
             result.put("message", "查询成功");

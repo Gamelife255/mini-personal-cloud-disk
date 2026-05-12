@@ -27,8 +27,8 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public List<File> list(Long userId, Long parentId) {
-        return fileMapper.findByParentId(parentId);
+    public List<File> list(Long userId, Long parentId, String sortBy, String sortOrder) {
+        return fileMapper.findByUserIdAndParentId(userId, parentId, sortBy, sortOrder);
     }
 
     @Override
