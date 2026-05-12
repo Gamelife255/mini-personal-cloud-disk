@@ -10,4 +10,4 @@ public interface FileService {
     List<File> list(Long userId, Long parentId);
     File rename(Long id, String newName);
     int delete(Long id);
-}
+    Long getUsedSpace(Long userId);

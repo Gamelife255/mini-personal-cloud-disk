@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.disk.mapper.FileMapper">
+
+    <resultMap id="FileResultMap" type="com.disk.entity.File">
+        <id property="id" column="id" />
+        <result property="userId" column="user_id" />
+        <result property="fileName" column="file_name" />
+        <result property="fileType" column="file_type" />
+        <result property="filePath" column="file_path" />
+        <result property="fileSize" column="file_size" />
+        <result property="fileHash" column="file_hash" />
+        <result property="parentId" column="parent_id" />
+        <result property="isFolder" column="is_folder" />
+        <result property="createdAt" column="created_at" />
+        <result property="updatedAt" column="updated_at" />
+    </resultMap>
+
+    <select id="findById" resultMap="FileResultMap">
+        SELECT * FROM files WHERE id = #{id}
+    </select>
+
+    <select id="findByUserId" resultMap="FileResultMap">
+        SELECT * FROM files WHERE user_id = #{userId} ORDER BY created_at DESC
+    </select>
+
+    <select id="findByParentId" resultMap="FileResultMap">
+        SELECT * FROM files WHERE parent_id = #{parentId} ORDER BY is_folder DESC, created_at DESC
+    </select>
+
+    <insert id="insert" parameterType="com.disk.entity.File" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO files (user_id, file_name, file_type, file_path, file_size, parent_id, is_folder, created_at, updated_at)
+        VALUES (#{userId}, #{fileName}, #{fileType}, #{filePath}, #{fileSize}, #{parentId}, #{isFolder}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.disk.entity.File">
+        UPDATE files
+        SET file_name = #{fileName}, file_type = #{fileType}, file_path = #{filePath}, 
+            file_size = #{fileSize}, parent_id = #{parentId}, 
+            is_folder = #{isFolder}, updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete" parameterType="java.lang.Long">
+        DELETE FROM files WHERE id = #{id}
+    </delete>
+
+    <select id="sumFileSizeByUserId" resultType="java.lang.Long">
+        SELECT COALESCE(SUM(file_size), 0) FROM files WHERE user_id = #{userId} AND is_folder = 0
+    </select>
+
+</mapper>

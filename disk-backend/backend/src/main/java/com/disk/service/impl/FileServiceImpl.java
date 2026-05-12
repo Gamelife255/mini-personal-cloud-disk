@@ -46,4 +46,9 @@ public class FileServiceImpl implements FileService {
     public int delete(Long id) {
         return fileMapper.delete(id);
     }
+
+    @Override
+    public Long getUsedSpace(Long userId) {
+        return fileMapper.sumFileSizeByUserId(userId);
+    }
 }

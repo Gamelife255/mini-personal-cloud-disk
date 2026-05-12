@@ -1,21 +1,28 @@
 # mini-personal-cloud-disk
+
 # 简易个人网盘系统
+
 基于 SpringBoot + Vue3 开发的轻量级个人网盘，实现文件云端存储、文件夹管理、在线预览等核心功能，仿百度网盘基础版体验。
 
 ## 技术栈
+
 ### 后端
+
 SpringBoot + MySQL + Maven
 实现文件元数据管理、用户认证、文件上传下载接口
 
 ### 前端
+
 Vue3 + Vite + Element Plus
 页面布局、文件列表展示、弹窗表单、分页组件
 
 ### 其他
+
 本地文件存储 + 在线图片预览
 Git 版本管理
 
 ## 核心功能
+
 - 用户注册、登录、身份校验
 - 文件上传、下载、删除、重命名
 - 新建文件夹、文件移入/移出目录
@@ -24,6 +31,7 @@ Git 版本管理
 - 文件列表分页展示、按时间排序
 
 ## 项目亮点
+
 1. 采用前后端分离架构，接口规范清晰
 2. 数据库只存储文件元信息，真实文件存放服务器本地目录
 3. 封装通用文件上传工具类，便于后续扩展
@@ -31,6 +39,7 @@ Git 版本管理
 5. 完整目录层级管理，模拟真实网盘目录结构
 
 ## 安全性（优先级从高到低）
+
 密码 BCrypt 加密存库
 JWT 登录鉴权
 上传文件类型白名单 + 重命名
@@ -38,24 +47,24 @@ JWT 登录鉴权
 过滤路径遍历字符
 
 ## 运行步骤
+
 1. 克隆项目
-git clone https://github.com/你的用户名/mini-personal-cloud-disk.git
-
+   git clone <https://github.com/你的用户名/mini-personal-cloud-disk.git>
 2. 导入数据库
-执行 sql 文件夹下 disk.sql 初始化数据表
-
+   执行 sql 文件夹下 disk.sql 初始化数据表
 3. 后端配置
-修改 application.yml 数据库账号密码、文件存储路径
-启动 SpringBoot 项目
-
+   修改 application.yml 数据库账号密码、文件存储路径
+   启动 SpringBoot 项目
 4. 前端运行
-cd disk-frontend
-npm install
-npm run dev
+   cd disk-frontend
+   npm install
+   npm run dev
 
 ## 项目截图
-（在这里粘贴 4-5 张截图：登录页、首页、上传文件、文件夹、预览页面）
+
+<br />
 
 ## 项目总结
+
 通过该项目掌握了前后端分离开发流程、文件上传下载原理、MySQL 表设计、用户会话认证等知识点；
 解决了文件路径管理、同名文件冲突、分页查询等实际问题，提升了接口开发和联调能力。

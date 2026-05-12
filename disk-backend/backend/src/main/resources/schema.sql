@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS files (
     file_path VARCHAR(500) NOT NULL,
     file_size BIGINT,
     file_type VARCHAR(50),
+    file_hash VARCHAR(64),
     parent_id BIGINT DEFAULT 0,
     is_folder TINYINT DEFAULT 0,
     created_at BIGINT,

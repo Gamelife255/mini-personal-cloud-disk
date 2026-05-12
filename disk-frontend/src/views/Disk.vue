@@ -102,8 +102,11 @@
               {{ formatDate(row.updatedAt) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
+              <el-button type="text" @click="previewFile(row)" v-if="isImage(row.fileType) || isVideo(row.fileType)">
+                <el-icon><View /></el-icon>
+              </el-button>
               <el-button type="text" @click="downloadFile(row)" v-if="!row.isFolder">
                 <el-icon><Download /></el-icon>
               </el-button>
@@ -123,11 +126,9 @@
     <el-dialog v-model="showUpload" title="上传文件" width="500px">
       <el-upload
         drag
-        action="/api/file/upload"
-        :headers="uploadHeaders"
-        :data="{ parentId: currentFolder }"
-        :on-success="handleUploadSuccess"
-        :on-error="handleUploadError"
+        :auto-upload="false"
+        :on-change="handleFileChange"
+        :file-list="fileList"
         multiple
       >
         <el-icon class="el-icon--upload"><Upload /></el-icon>
@@ -135,6 +136,10 @@
           拖拽文件到此处或 <em>点击上传</em>
         </div>
       </el-upload>
+      <template #footer>
+        <el-button @click="showUpload = false">取消</el-button>
+        <el-button type="primary" @click="handleUpload" :loading="uploading">上传</el-button>
+      </template>
     </el-dialog>
 
     <!-- 新建文件夹对话框 -->
@@ -145,13 +150,35 @@
         <el-button type="primary" @click="createFolder">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 文件预览对话框 -->
+    <el-dialog v-model="showPreview" title="文件预览" width="800px" :close-on-click-modal="true">
+      <div class="preview-content">
+        <img v-if="previewFileInfo.isImage" :src="previewUrl" :alt="previewFileInfo.fileName" class="preview-image" />
+        <video v-else-if="previewFileInfo.isVideo" :src="previewUrl" controls class="preview-video">
+          您的浏览器不支持视频播放
+        </video>
+        <div v-else class="preview-not-supported">
+          <el-icon :size="48" class="preview-icon"><Document /></el-icon>
+          <p>暂不支持此文件类型预览</p>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showPreview = false">关闭</el-button>
+        <el-button type="primary" @click="downloadFile(previewFileInfo)">下载</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { uploadFile, createFolder as createFolderApi, getFileList, downloadFile as downloadFileApi, deleteFile as deleteFileApi, getSpaceUsage } from '../api/file'
+import { 
+  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View 
+} from '@element-plus/icons-vue'
 
 const router = useRouter()
 const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
@@ -166,17 +193,51 @@ const activeMenu = ref('all')
 const showUpload = ref(false)
 const showNewFolder = ref(false)
 const newFolderName = ref('')
+const fileList = ref([])
+const uploading = ref(false)
 
-// 存储空间（模拟数据）
-const usedStorage = ref('2.5GB')
-const totalStorage = ref('10GB')
-const storagePercent = ref(25)
+// 存储空间
+const usedStorage = ref('0 B')
+const totalStorage = ref('10 GB')
+const storagePercent = ref(0)
 const storageColor = ref('#409EFF')
 
-// 上传请求头
-const uploadHeaders = computed(() => ({
-  Authorization: `Bearer ${localStorage.getItem('token')}`
-}))
+// 预览相关
+const showPreview = ref(false)
+const previewUrl = ref('')
+const previewFileInfo = ref({
+  id: null,
+  fileName: '',
+  fileType: '',
+  isImage: false,
+  isVideo: false
+})
+
+// 加载存储空间信息
+const loadSpaceUsage = async () => {
+  try {
+    const response = await getSpaceUsage()
+    if (response.code === 200) {
+      const { usedSpace, totalSpace } = response.data
+      usedStorage.value = formatFileSize(usedSpace)
+      totalStorage.value = formatFileSize(totalSpace)
+      storagePercent.value = Math.round((usedSpace / totalSpace) * 100)
+      
+      // 根据使用比例设置颜色
+      if (storagePercent.value >= 90) {
+        storageColor.value = '#F56C6C'
+      } else if (storagePercent.value >= 70) {
+        storageColor.value = '#E6A23C'
+      } else {
+        storageColor.value = '#67C23A'
+      }
+    } else {
+      ElMessage.error(response.message || '加载存储空间信息失败')
+    }
+  } catch (error) {
+    ElMessage.error('加载存储空间信息失败')
+  }
+}
 
 // 过滤后的文件列表
 const filteredFiles = computed(() => {
@@ -209,55 +270,20 @@ const filteredFiles = computed(() => {
 const loadFiles = async () => {
   loading.value = true
   try {
-    // 模拟数据，实际项目中调用API
-    await new Promise(resolve => setTimeout(resolve, 500))
-    files.value = [
-      {
-        id: 1,
-        fileName: '文档',
-        isFolder: true,
-        fileSize: 0,
-        fileType: 'folder',
-        updatedAt: Date.now(),
-        parentId: 0
-      },
-      {
-        id: 2,
-        fileName: '图片',
-        isFolder: true,
-        fileSize: 0,
-        fileType: 'folder',
-        updatedAt: Date.now(),
-        parentId: 0
-      },
-      {
-        id: 3,
-        fileName: '测试文档.txt',
-        isFolder: false,
-        fileSize: 1024,
-        fileType: 'text/plain',
-        updatedAt: Date.now() - 86400000,
-        parentId: 0
-      },
-      {
-        id: 4,
-        fileName: '示例图片.jpg',
-        isFolder: false,
-        fileSize: 2048000,
-        fileType: 'image/jpeg',
-        updatedAt: Date.now() - 172800000,
-        parentId: 0
-      },
-      {
-        id: 5,
-        fileName: '演示视频.mp4',
-        isFolder: false,
-        fileSize: 52428800,
-        fileType: 'video/mp4',
-        updatedAt: Date.now() - 259200000,
-        parentId: 0
-      }
-    ]
+    const response = await getFileList(currentFolder.value)
+    if (response.code === 200) {
+      files.value = response.data.map(file => ({
+        id: file.id,
+        fileName: file.fileName,
+        isFolder: file.isFolder === 1,
+        fileSize: file.fileSize,
+        fileType: file.fileType,
+        updatedAt: file.updatedAt,
+        parentId: file.parentId
+      }))
+    } else {
+      ElMessage.error(response.message || '加载文件失败')
+    }
   } catch (error) {
     ElMessage.error('加载文件失败')
   } finally {
@@ -319,9 +345,21 @@ const filterFiles = (type) => {
 }
 
 // 下载文件
-const downloadFile = (file) => {
-  ElMessage.success(`开始下载: ${file.fileName}`)
-  // 实际项目中调用下载API
+const downloadFile = async (file) => {
+  try {
+    const blob = await downloadFileApi(file.id)
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = file.fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('下载成功')
+  } catch (error) {
+    ElMessage.error('下载失败')
+  }
 }
 
 // 删除文件
@@ -332,35 +370,90 @@ const deleteFile = async (file) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    ElMessage.success('删除成功')
-    loadFiles()
-  } catch {
-    // 取消删除
+    const response = await deleteFileApi(file.id)
+    if (response.code === 200) {
+      ElMessage.success('删除成功')
+      loadFiles()
+      loadSpaceUsage()
+    } else {
+      ElMessage.error(response.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
   }
 }
 
-// 上传成功
-const handleUploadSuccess = () => {
-  ElMessage.success('上传成功')
-  showUpload.value = false
-  loadFiles()
+// 预览文件
+const previewFile = async (file) => {
+  previewFileInfo.value = {
+    id: file.id,
+    fileName: file.fileName,
+    fileType: file.fileType,
+    isImage: isImage(file.fileType),
+    isVideo: isVideo(file.fileType)
+  }
+  try {
+    const blob = await downloadFileApi(file.id)
+    previewUrl.value = window.URL.createObjectURL(blob)
+    showPreview.value = true
+  } catch (error) {
+    ElMessage.error('加载预览文件失败')
+  }
 }
 
-// 上传失败
-const handleUploadError = () => {
-  ElMessage.error('上传失败')
+// 上传文件选择
+const handleFileChange = (file) => {
+  fileList.value.push(file)
+}
+
+// 上传文件
+const handleUpload = async () => {
+  if (fileList.value.length === 0) {
+    ElMessage.warning('请选择要上传的文件')
+    return
+  }
+  
+  uploading.value = true
+  try {
+    for (const file of fileList.value) {
+      const response = await uploadFile(file.raw, currentFolder.value)
+      if (response.code !== 200) {
+        ElMessage.error(`${file.name} 上传失败`)
+      }
+    }
+    ElMessage.success('上传成功')
+    showUpload.value = false
+    fileList.value = []
+    loadFiles()
+    loadSpaceUsage()
+  } catch (error) {
+    ElMessage.error('上传失败')
+  } finally {
+    uploading.value = false
+  }
 }
 
 // 创建文件夹
-const createFolder = () => {
+const createFolder = async () => {
   if (!newFolderName.value.trim()) {
     ElMessage.warning('请输入文件夹名称')
     return
   }
-  ElMessage.success(`创建文件夹: ${newFolderName.value}`)
-  showNewFolder.value = false
-  newFolderName.value = ''
-  loadFiles()
+  try {
+    const response = await createFolderApi(newFolderName.value, currentFolder.value)
+    if (response.code === 200) {
+      ElMessage.success('创建文件夹成功')
+      showNewFolder.value = false
+      newFolderName.value = ''
+      loadFiles()
+    } else {
+      ElMessage.error(response.message || '创建文件夹失败')
+    }
+  } catch (error) {
+    ElMessage.error('创建文件夹失败')
+  }
 }
 
 // 退出登录
@@ -370,8 +463,17 @@ const logout = () => {
   router.push('/login')
 }
 
+// 预览关闭时释放 blob URL
+watch(showPreview, (newVal) => {
+  if (!newVal && previewUrl.value) {
+    window.URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+  }
+})
+
 onMounted(() => {
   loadFiles()
+  loadSpaceUsage()
 })
 </script>
 
@@ -484,5 +586,40 @@ onMounted(() => {
 
 :deep(.el-breadcrumb__item:hover) {
   color: #409EFF;
+}
+
+/* 预览对话框样式 */
+.preview-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 500px;
+  object-fit: contain;
+}
+
+.preview-video {
+  max-width: 100%;
+  max-height: 500px;
+  object-fit: contain;
+}
+
+.preview-not-supported {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+}
+
+.preview-icon {
+  margin-bottom: 16px;
 }
 </style>

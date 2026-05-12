@@ -13,4 +13,5 @@ public interface FileMapper {
     int insert(File file);
     int update(File file);
     int delete(Long id);
+    Long sumFileSizeByUserId(Long userId);
 }
