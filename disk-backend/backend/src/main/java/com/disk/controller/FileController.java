@@ -133,11 +133,26 @@ public class FileController {
     }
 
     @GetMapping("/download/{id}")
-    public ResponseEntity<byte[]> download(@PathVariable Long id) {
+    public ResponseEntity<byte[]> download(@PathVariable Long id, HttpServletRequest request) {
         try {
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            Long userId = JwtUtil.getUserIdFromToken(token);
+            
+            if (userId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
             com.disk.entity.File fileInfo = fileService.download(id);
             if (fileInfo == null) {
                 return ResponseEntity.notFound().build();
+            }
+            
+            // 验证用户权限
+            if (!fileInfo.getUserId().equals(userId)) {
+                return ResponseEntity.status(403).build();
             }
             
             Path filePath = Paths.get(fileInfo.getFilePath());
