@@ -3,6 +3,7 @@ package com.disk.controller;
 import com.disk.entity.File;
 import com.disk.service.FileService;
 import com.disk.util.JwtUtil;
+import com.disk.util.PsdUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -12,6 +13,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.imageio.ImageIO;
 
 @RestController
 @RequestMapping("/api/file")
@@ -68,6 +73,20 @@ public class FileController {
             Path filePath = uploadDir.resolve(newFileName);
             Files.copy(file.getInputStream(), filePath);
             
+            // 处理PSD文件，生成预览图
+            String previewPath = null;
+            if (PsdUtil.isPsdFile(originalFilename)) {
+                try {
+                    String previewFileName = UUID.randomUUID().toString() + ".png";
+                    Path previewFilePath = uploadDir.resolve(previewFileName);
+                    BufferedImage previewImage = PsdUtil.psdToImage(filePath.toFile());
+                    ImageIO.write(previewImage, "png", previewFilePath.toFile());
+                    previewPath = previewFilePath.toString();
+                } catch (Exception e) {
+                    // PSD解析失败，继续上传但不生成预览
+                }
+            }
+            
             com.disk.entity.File fileInfo = new com.disk.entity.File();
             fileInfo.setUserId(userId);
             fileInfo.setFileName(originalFilename);
@@ -76,6 +95,11 @@ public class FileController {
             fileInfo.setFileSize(file.getSize());
             fileInfo.setParentId(parentId);
             fileInfo.setIsFolder(0);
+            
+            // 存储预览图路径（如果是PSD文件）
+            if (previewPath != null) {
+                fileInfo.setFileHash(previewPath); // 使用fileHash字段存储预览图路径
+            }
             
             com.disk.entity.File uploadedFile = fileService.upload(fileInfo);
             
@@ -171,6 +195,75 @@ public class FileController {
                     .headers(headers)
                     .body(fileContent);
         } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/preview/{id}")
+    public ResponseEntity<byte[]> preview(@PathVariable Long id, HttpServletRequest request) {
+        try {
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            Long userId = JwtUtil.getUserIdFromToken(token);
+
+            if (userId == null) {
+                return ResponseEntity.status(401).build();
+            }
+
+            com.disk.entity.File fileInfo = fileService.download(id);
+            if (fileInfo == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            if (!fileInfo.getUserId().equals(userId)) {
+                return ResponseEntity.status(403).build();
+            }
+
+            String fileName = fileInfo.getFileName();
+            HttpHeaders headers = new HttpHeaders();
+            byte[] fileContent;
+
+            if (PsdUtil.isPsdFile(fileName)) {
+                // 优先使用上传时生成的预览图
+                String previewPath = fileInfo.getFileHash();
+                Path previewFile = null;
+                if (previewPath != null && !previewPath.isEmpty()) {
+                    previewFile = Paths.get(previewPath);
+                    if (!Files.exists(previewFile)) {
+                        previewFile = null;
+                    }
+                }
+
+                if (previewFile != null) {
+                    fileContent = Files.readAllBytes(previewFile);
+                } else {
+                    // 预览图不存在，实时转换为PNG
+                    Path psdPath = Paths.get(fileInfo.getFilePath());
+                    if (!Files.exists(psdPath)) {
+                        return ResponseEntity.notFound().build();
+                    }
+                    BufferedImage image = PsdUtil.psdToImage(psdPath.toFile());
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    ImageIO.write(image, "png", baos);
+                    fileContent = baos.toByteArray();
+                }
+                headers.setContentType(MediaType.IMAGE_PNG);
+            } else {
+                Path filePath = Paths.get(fileInfo.getFilePath());
+                if (!Files.exists(filePath)) {
+                    return ResponseEntity.notFound().build();
+                }
+                fileContent = Files.readAllBytes(filePath);
+                headers.setContentType(MediaType.parseMediaType(fileInfo.getFileType()));
+            }
+
+            headers.setContentLength(fileContent.length);
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(fileContent);
+        } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
     }

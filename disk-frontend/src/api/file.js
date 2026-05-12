@@ -56,3 +56,11 @@ export function getSpaceUsage() {
     method: 'get'
   })
 }
+
+export function previewFile(id) {
+  return request({
+    url: `/api/file/preview/${id}`,
+    method: 'get',
+    responseType: 'blob'
+  })
+}

@@ -76,6 +76,13 @@
             <version>1.18.30</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- TwelveMonkeys ImageIO - PSD support -->
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-psd</artifactId>
+            <version>3.10.1</version>
+        </dependency>
     </dependencies>
 
     <build>

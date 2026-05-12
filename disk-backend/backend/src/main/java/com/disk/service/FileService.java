@@ -11,3 +11,4 @@ public interface FileService {
     File rename(Long id, String newName);
     int delete(Long id);
     Long getUsedSpace(Long userId);
+}

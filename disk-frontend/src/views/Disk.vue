@@ -7,7 +7,7 @@
       </div>
       <div class="header-right">
         <span class="username">{{ user?.username }}</span>
-        <el-button type="text" @click="logout">退出登录</el-button>
+        <el-button link @click="logout">退出登录</el-button>
       </div>
     </el-header>
 
@@ -84,7 +84,7 @@
                 <el-icon :size="24" class="file-icon">
                   <Folder v-if="row.isFolder" color="#409EFF" />
                   <Document v-else-if="isDocument(row.fileType)" color="#67C23A" />
-                  <Picture v-else-if="isImage(row.fileType)" color="#E6A23C" />
+                  <Picture v-else-if="isImage(row.fileType, row.fileName)" color="#E6A23C" />
                   <VideoCamera v-else-if="isVideo(row.fileType)" color="#F56C6C" />
                   <Files v-else color="#909399" />
                 </el-icon>
@@ -104,13 +104,13 @@
           </el-table-column>
           <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
-              <el-button type="text" @click="previewFile(row)" v-if="isImage(row.fileType) || isVideo(row.fileType)">
+              <el-button link @click="previewFile(row)" v-if="isImage(row.fileType, row.fileName) || isVideo(row.fileType)">
                 <el-icon><View /></el-icon>
               </el-button>
-              <el-button type="text" @click="downloadFile(row)" v-if="!row.isFolder">
+              <el-button link @click="downloadFile(row)" v-if="!row.isFolder">
                 <el-icon><Download /></el-icon>
               </el-button>
-              <el-button type="text" @click="deleteFile(row)">
+              <el-button link @click="deleteFile(row)">
                 <el-icon><Delete /></el-icon>
               </el-button>
             </template>
@@ -175,7 +175,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { uploadFile, createFolder as createFolderApi, getFileList, downloadFile as downloadFileApi, deleteFile as deleteFileApi, getSpaceUsage } from '../api/file'
+import { uploadFile, createFolder as createFolderApi, getFileList, downloadFile as downloadFileApi, deleteFile as deleteFileApi, getSpaceUsage, previewFile as previewFileApi } from '../api/file'
 import { 
   Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View 
 } from '@element-plus/icons-vue'
@@ -246,11 +246,11 @@ const filteredFiles = computed(() => {
   // 按类型过滤
   if (activeMenu.value !== 'all') {
     result = result.filter(file => {
-      if (activeMenu.value === 'image') return isImage(file.fileType)
+      if (activeMenu.value === 'image') return isImage(file.fileType, file.fileName)
       if (activeMenu.value === 'video') return isVideo(file.fileType)
       if (activeMenu.value === 'document') return isDocument(file.fileType)
       if (activeMenu.value === 'other') {
-        return !isImage(file.fileType) && !isVideo(file.fileType) && !isDocument(file.fileType) && !file.isFolder
+        return !isImage(file.fileType, file.fileName) && !isVideo(file.fileType) && !isDocument(file.fileType) && !file.isFolder
       }
       return true
     })
@@ -292,7 +292,7 @@ const loadFiles = async () => {
 }
 
 // 文件类型判断
-const isImage = (type) => type?.startsWith('image/')
+const isImage = (type, fileName) => type?.startsWith('image/') || isPsd(fileName)
 const isVideo = (type) => type?.startsWith('video/')
 const isDocument = (type) => {
   const docTypes = ['application/pdf', 'text/plain', 'application/msword', 
@@ -406,17 +406,24 @@ const deleteFile = async (file) => {
   }
 }
 
+// 判断是否是PSD文件
+const isPsd = (fileName) => {
+  if (!fileName) return false
+  return fileName.toLowerCase().endsWith('.psd')
+}
+
 // 预览文件
 const previewFile = async (file) => {
+  const isPsdFile = isPsd(file.fileName)
   previewFileInfo.value = {
     id: file.id,
     fileName: file.fileName,
     fileType: file.fileType,
-    isImage: isImage(file.fileType),
+    isImage: isImage(file.fileType, file.fileName),
     isVideo: isVideo(file.fileType)
   }
   try {
-    const blob = await downloadFileApi(file.id)
+    const blob = isPsdFile ? await previewFileApi(file.id) : await downloadFileApi(file.id)
     previewUrl.value = window.URL.createObjectURL(blob)
     showPreview.value = true
   } catch (error) {
