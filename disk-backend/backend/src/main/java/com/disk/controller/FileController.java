@@ -602,4 +602,49 @@ public class FileController {
         
         return result;
     }
+
+    @PutMapping("/{id}/remark")
+    public Map<String, Object> updateRemark(@PathVariable Long id, @RequestBody Map<String, String> body,
+                                             HttpServletRequest request) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            Long userId = JwtUtil.getUserIdFromToken(token);
+            if (userId == null) {
+                result.put("code", 401);
+                result.put("message", "未登录");
+                return result;
+            }
+
+            com.disk.entity.File file = fileService.download(id);
+            if (file == null) {
+                result.put("code", 404);
+                result.put("message", "文件不存在");
+                return result;
+            }
+            if (!file.getUserId().equals(userId)) {
+                result.put("code", 403);
+                result.put("message", "无权限");
+                return result;
+            }
+
+            String remark = body.get("remark");
+            if (remark != null && remark.length() > 500) {
+                result.put("code", 400);
+                result.put("message", "备注长度不能超过500个字符");
+                return result;
+            }
+
+            fileService.updateRemark(id, remark);
+            result.put("code", 200);
+            result.put("message", "备注更新成功");
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", "更新失败: " + e.getMessage());
+        }
+        return result;
+    }
 }

@@ -137,6 +137,39 @@
               {{ formatDate(row.updatedAt) }}
             </template>
           </el-table-column>
+          <el-table-column label="备注" width="160">
+            <template #default="{ row }">
+              <el-popover
+                v-if="!row.isFolder"
+                placement="bottom"
+                :width="280"
+                trigger="click"
+                @show="editingRemark = { id: row.id, text: row.remark || '' }"
+              >
+                <template #reference>
+                  <div class="remark-cell">
+                    <span v-if="row.remark" class="remark-text">{{ row.remark }}</span>
+                    <el-icon v-else class="remark-icon-empty"><EditPen /></el-icon>
+                    <el-icon v-if="row.remark" class="remark-icon-edit"><EditPen /></el-icon>
+                  </div>
+                </template>
+                <div class="remark-editor">
+                  <el-input
+                    v-model="editingRemark.text"
+                    type="textarea"
+                    :rows="3"
+                    maxlength="500"
+                    show-word-limit
+                    placeholder="添加备注信息..."
+                  />
+                  <div class="remark-actions">
+                    <el-button size="small" @click="saveRemark(row)">保存</el-button>
+                  </div>
+                </div>
+              </el-popover>
+              <span v-else class="remark-disabled">—</span>
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
               <el-button link @click="previewFile(row)" v-if="isPreviewable(row.fileType, row.fileName)">
@@ -325,10 +358,10 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackgroundSettings from '../components/BackgroundSettings.vue'
 import { useBackground } from '../composables/useBackground'
-import { uploadFile, createFolder as createFolderApi, getFileList, downloadFile as downloadFileApi, deleteFile as deleteFileApi, getSpaceUsage, previewFile as previewFileApi, batchDelete as batchDeleteApi, batchDownload as batchDownloadApi, batchMove as batchMoveApi } from '../api/file'
+import { uploadFile, createFolder as createFolderApi, getFileList, downloadFile as downloadFileApi, deleteFile as deleteFileApi, getSpaceUsage, previewFile as previewFileApi, batchDelete as batchDeleteApi, batchDownload as batchDownloadApi, batchMove as batchMoveApi, updateFileRemark } from '../api/file'
 import { useDarkMode } from '../composables/useDarkMode'
 import {
-  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View, Sort, Sunny, Moon, Setting, PictureFilled, DataAnalysis, ZoomIn, ZoomOut, FullScreen, Aim, Close
+  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View, Sort, Sunny, Moon, Setting, PictureFilled, DataAnalysis, ZoomIn, ZoomOut, FullScreen, Aim, Close, EditPen
 } from '@element-plus/icons-vue'
 
 const { isDark, toggle: toggleTheme } = useDarkMode()
@@ -551,6 +584,23 @@ function onWheel(e) {
   zoomImage(e.deltaY < 0 ? 1 : -1)
 }
 
+// 备注编辑
+const editingRemark = ref({ id: null, text: '' })
+
+async function saveRemark(row) {
+  try {
+    const response = await updateFileRemark(editingRemark.value.id, editingRemark.value.text || null)
+    if (response.code === 200) {
+      row.remark = editingRemark.value.text || null
+      ElMessage.success('备注已保存')
+    } else {
+      ElMessage.error(response.message || '保存失败')
+    }
+  } catch (e) {
+    ElMessage.error('保存备注失败')
+  }
+}
+
 // 加载存储空间信息
 const loadSpaceUsage = async () => {
   try {
@@ -617,7 +667,8 @@ const loadFiles = async () => {
         fileSize: file.fileSize,
         fileType: file.fileType,
         updatedAt: file.updatedAt,
-        parentId: file.parentId
+        parentId: file.parentId,
+        remark: file.remark || null
       }))
     } else {
       ElMessage.error(response.message || '加载文件失败')
@@ -1234,6 +1285,56 @@ onMounted(() => {
   color: var(--el-text-color-secondary);
   text-align: center;
   padding: 24px 0;
+}
+
+/* 备注 */
+.remark-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  min-height: 24px;
+}
+
+.remark-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+}
+
+.remark-icon-empty {
+  color: var(--el-text-color-placeholder);
+  font-size: 14px;
+}
+
+.remark-icon-edit {
+  color: var(--el-text-color-placeholder);
+  font-size: 12px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.remark-cell:hover .remark-icon-edit {
+  opacity: 1;
+}
+
+.remark-disabled {
+  color: var(--el-text-color-placeholder);
+}
+
+.remark-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.remark-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* 图片查看器 */

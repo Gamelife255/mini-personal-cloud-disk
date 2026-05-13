@@ -13,6 +13,7 @@ public class File {
     private String fileHash;
     private Long parentId;
     private Integer isFolder;
+    private String remark;
     private Long createdAt;
     private Long updatedAt;
 }

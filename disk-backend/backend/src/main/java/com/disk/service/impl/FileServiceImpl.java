@@ -84,4 +84,9 @@ public class FileServiceImpl implements FileService {
         long since = System.currentTimeMillis() - (long) days * 24 * 3600 * 1000;
         return fileMapper.countFilesByUploadDate(userId, since);
     }
+
+    @Override
+    public int updateRemark(Long id, String remark) {
+        return fileMapper.updateRemark(id, remark);
+    }
 }

@@ -14,8 +14,9 @@ spring:
     host: smtp.qq.com
     port: 465
     # 发送邮件的邮箱账号
-    username: 2055126913@qq.com
-    password: sytcuprjuvdiedia # 这是一个授权码，不是邮箱密码，切记不要泄露
+    username: youremail 
+    # 这里修改为邮箱的授权码 
+    password: XXXXXXXXXX # 这是一个授权码，不是邮箱密码，切记不要泄露
     protocol: smtps
     properties:
       mail:

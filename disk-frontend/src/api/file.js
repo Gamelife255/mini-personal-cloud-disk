@@ -90,3 +90,11 @@ export function batchMove(ids, targetParentId) {
     data: { ids, targetParentId }
   })
 }
+
+export function updateFileRemark(id, remark) {
+  return request({
+    url: `/api/file/${id}/remark`,
+    method: 'put',
+    data: { remark }
+  })
+}

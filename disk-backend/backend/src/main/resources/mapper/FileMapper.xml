@@ -13,6 +13,7 @@
         <result property="parentId" column="parent_id" />
         <result property="isFolder" column="is_folder" />
         <result property="createdAt" column="created_at" />
+        <result property="remark" column="remark" />
         <result property="updatedAt" column="updated_at" />
     </resultMap>
 
@@ -53,8 +54,8 @@
     </select>
 
     <insert id="insert" parameterType="com.disk.entity.File" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO files (user_id, file_name, file_type, file_path, file_size, parent_id, is_folder, created_at, updated_at)
-        VALUES (#{userId}, #{fileName}, #{fileType}, #{filePath}, #{fileSize}, #{parentId}, #{isFolder}, #{createdAt}, #{updatedAt})
+        INSERT INTO files (user_id, file_name, file_type, file_path, file_size, parent_id, is_folder, remark, created_at, updated_at)
+        VALUES (#{userId}, #{fileName}, #{fileType}, #{filePath}, #{fileSize}, #{parentId}, #{isFolder}, #{remark}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update" parameterType="com.disk.entity.File">
@@ -83,6 +84,10 @@
         AND created_at >= #{since}
         GROUP BY date ORDER BY date ASC
     </select>
+
+    <update id="updateRemark">
+        UPDATE files SET remark = #{remark} WHERE id = #{id}
+    </update>
 
     <select id="findByUserIdAndParentIdIgnoreOwnership" resultMap="FileResultMap">
         SELECT * FROM files WHERE user_id = #{userId} AND parent_id = #{parentId}

@@ -17,4 +17,5 @@ public interface FileService {
     int countFiles(Long userId);
     int countFolders(Long userId);
     java.util.List<java.util.Map<String, Object>> getUploadHistory(Long userId, int days);
+    int updateRemark(Long id, String remark);
 }
