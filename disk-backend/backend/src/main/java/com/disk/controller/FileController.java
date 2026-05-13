@@ -2,8 +2,10 @@ package com.disk.controller;
 
 import com.disk.entity.File;
 import com.disk.service.FileService;
+import com.disk.util.FileValidationUtil;
 import com.disk.util.JwtUtil;
 import com.disk.util.PsdUtil;
+import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -17,6 +19,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -64,25 +67,46 @@ public class FileController {
                 result.put("message", "文件不能为空");
                 return result;
             }
-            
-            String originalFilename = file.getOriginalFilename();
-            String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+
+            // Security: validate file type via magic bytes + extension whitelist
+            FileValidationUtil.ValidationResult validation =
+                FileValidationUtil.validate(file);
+            if (!validation.valid()) {
+                result.put("code", 400);
+                result.put("message", validation.errorMessage());
+                return result;
+            }
+
+            String originalFilename = validation.sanitizedFileName();
+            String fileExtension = validation.extension();
+            String detectedMimeType = validation.detectedMimeType();
             String newFileName = UUID.randomUUID().toString() + fileExtension;
 
-            // 确定文件保存目录：有父文件夹则存入对应目录，否则存根目录
-            Path saveDir = Paths.get(uploadPath);
+            // Determine safe save directory, protected against path traversal
+            String parentFolderPath = null;
             if (parentId != null && parentId != 0) {
                 com.disk.entity.File parentFolder = fileService.download(parentId);
                 if (parentFolder != null && parentFolder.getIsFolder() == 1
                         && parentFolder.getFilePath() != null && !parentFolder.getFilePath().isEmpty()) {
-                    saveDir = Paths.get(parentFolder.getFilePath());
+                    parentFolderPath = parentFolder.getFilePath();
                 }
             }
+
+            Path filePath;
+            try {
+                filePath = FileValidationUtil.resolveSafePath(
+                    uploadPath, parentFolderPath, newFileName);
+            } catch (SecurityException e) {
+                result.put("code", 400);
+                result.put("message", "文件路径不合法");
+                return result;
+            }
+
+            Path saveDir = filePath.getParent();
             if (!Files.exists(saveDir)) {
                 Files.createDirectories(saveDir);
             }
 
-            Path filePath = saveDir.resolve(newFileName);
             Files.copy(file.getInputStream(), filePath);
             
             // 处理PSD文件，生成预览图
@@ -102,7 +126,7 @@ public class FileController {
             com.disk.entity.File fileInfo = new com.disk.entity.File();
             fileInfo.setUserId(userId);
             fileInfo.setFileName(originalFilename);
-            fileInfo.setFileType(file.getContentType());
+            fileInfo.setFileType(detectedMimeType);
             fileInfo.setFilePath(filePath.toString());
             fileInfo.setFileSize(file.getSize());
             fileInfo.setParentId(parentId);
@@ -208,10 +232,10 @@ public class FileController {
             byte[] fileContent = Files.readAllBytes(filePath);
             
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType(fileInfo.getFileType()));
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
             headers.setContentDispositionFormData("attachment", fileInfo.getFileName());
             headers.setContentLength(fileContent.length);
-            
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(fileContent);
@@ -277,7 +301,18 @@ public class FileController {
                     return ResponseEntity.notFound().build();
                 }
                 fileContent = Files.readAllBytes(filePath);
-                headers.setContentType(MediaType.parseMediaType(fileInfo.getFileType()));
+
+                // Security: detect real MIME from disk, only serve inline for safe types
+                String detectedMime;
+                try (InputStream in = Files.newInputStream(filePath)) {
+                    detectedMime = new Tika().detect(in);
+                }
+                if (FileValidationUtil.isInlineSafe(detectedMime)) {
+                    headers.setContentType(MediaType.parseMediaType(detectedMime));
+                } else {
+                    headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+                    headers.setContentDispositionFormData("attachment", fileInfo.getFileName());
+                }
             }
 
             headers.setContentLength(fileContent.length);

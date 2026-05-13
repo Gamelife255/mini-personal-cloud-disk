@@ -352,6 +352,22 @@ const loadFiles = async () => {
 }
 
 // 文件类型判断
+// Client-side extension whitelist (keep in sync with FileValidationUtil.java)
+const ALLOWED_EXTENSIONS = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico',
+  '.psd', '.tiff', '.tif', '.heic', '.heif',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+  '.txt', '.csv', '.md', '.rtf', '.json', '.xml', '.yml', '.yaml',
+  '.toml', '.ini', '.cfg', '.conf', '.properties', '.log',
+  '.java', '.py', '.js', '.ts', '.jsx', '.tsx', '.vue',
+  '.html', '.htm', '.css', '.scss', '.less',
+  '.c', '.cpp', '.h', '.hpp', '.rs', '.go',
+  '.sh', '.bat', '.ps1', '.sql',
+  '.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm', '.m4v',
+  '.mp3', '.wav', '.ogg', '.flac', '.aac', '.wma', '.m4a', '.opus',
+  '.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz'
+])
+
 const isImage = (type, fileName) => type?.startsWith('image/') || isPsd(fileName)
 const isVideo = (type) => type?.startsWith('video/')
 const isDocument = (type) => {
@@ -502,7 +518,17 @@ const handleUpload = async () => {
     ElMessage.warning('请选择要上传的文件')
     return
   }
-  
+
+  // Client-side extension check (defense-in-depth, backend does real validation)
+  for (const fileItem of fileList.value) {
+    const name = fileItem.name || ''
+    const ext = name.substring(name.lastIndexOf('.')).toLowerCase()
+    if (!ext || !ALLOWED_EXTENSIONS.has(ext)) {
+      ElMessage.error(`不支持的文件类型: ${name}`)
+      return
+    }
+  }
+
   uploading.value = true
   try {
     for (const file of fileList.value) {
