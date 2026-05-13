@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -95,6 +96,13 @@ public class AdminController {
             result.put("code", 403);
             result.put("message", "无权限");
             return result;
+        }
+        // Whitelist sort parameters to prevent SQL injection
+        if (!Set.of("fileName", "fileSize", "fileType", "updatedAt").contains(sortBy)) {
+            sortBy = "updatedAt";
+        }
+        if (!Set.of("ASC", "DESC").contains(sortOrder.toUpperCase())) {
+            sortOrder = "DESC";
         }
         List<File> files = fileService.list(id, parentId, sortBy, sortOrder);
         result.put("code", 200);
