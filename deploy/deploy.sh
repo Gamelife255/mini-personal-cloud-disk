@@ -164,9 +164,13 @@ if [ -f "$NGINX_CONF" ]; then
     # 删除默认站点（避免冲突）
     sudo rm -f /etc/nginx/sites-enabled/default
 
-    # 测试并重载 Nginx
+    # 测试配置并启动/重载 Nginx
     if sudo nginx -t 2>/dev/null; then
-        sudo systemctl reload nginx
+        if sudo systemctl is-active --quiet nginx 2>/dev/null; then
+            sudo systemctl reload nginx
+        else
+            sudo systemctl start nginx
+        fi
         info "Nginx 配置完成"
     else
         warn "Nginx 配置测试失败，请检查 /etc/nginx/sites-available/cloud-disk"
