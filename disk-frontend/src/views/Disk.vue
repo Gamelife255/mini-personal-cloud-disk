@@ -232,11 +232,95 @@
 
     <!-- 背景设置 -->
     <BackgroundSettings context="disk" />
+
+    <!-- 图片查看器 -->
+    <teleport to="body">
+      <div
+        v-if="imgViewer.show"
+        class="img-viewer-backdrop"
+        :class="{ 'img-fullscreen': imgFullscreen }"
+        @wheel.prevent="onWheel"
+        @click.self="closeImageViewer"
+        @keydown="onViewerKeydown"
+        tabindex="0"
+        ref="viewerBackdrop"
+      >
+        <!-- 浮动窗口模式（非全屏） -->
+        <div
+          v-if="!imgFullscreen"
+          class="img-viewer-window"
+          :style="{ left: imgWindow.x + 'px', top: imgWindow.y + 'px', width: imgWindow.width + 'px', height: imgWindow.height + 'px' }"
+          @mousedown="onWindowDragStart"
+        >
+          <!-- 标题栏 -->
+          <div class="img-viewer-titlebar">
+            <span class="img-viewer-title">{{ imgViewer.fileName }}</span>
+            <span class="img-viewer-zoom-label">{{ Math.round(imgScale * 100) }}%</span>
+            <div class="img-viewer-actions">
+              <el-button link @click="zoomOut" title="缩小"><el-icon :size="16"><ZoomOut /></el-icon></el-button>
+              <el-button link @click="zoomIn" title="放大"><el-icon :size="16"><ZoomIn /></el-icon></el-button>
+              <el-button link @click="fitImage" title="适应窗口"><el-icon :size="16"><Aim /></el-icon></el-button>
+              <el-button link @click="toggleImgFullscreen" title="全屏"><el-icon :size="16"><FullScreen /></el-icon></el-button>
+              <el-button link @click="closeImageViewer" title="关闭"><el-icon :size="16"><Close /></el-icon></el-button>
+            </div>
+          </div>
+          <!-- 图片区域 -->
+          <div class="img-viewer-body" @mousedown="onImagePanStart">
+            <img
+              :src="imgViewer.url"
+              :alt="imgViewer.fileName"
+              class="img-viewer-image"
+              :style="{
+                transform: `translate(${imgTranslateX}px, ${imgTranslateY}px) scale(${imgScale})`,
+                cursor: imgScale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default'
+              }"
+              draggable="false"
+            />
+          </div>
+          <!-- 调整大小手柄 -->
+          <div class="resize-handle resize-se" @mousedown="onResizeStart($event, 'se')"></div>
+          <div class="resize-handle resize-sw" @mousedown="onResizeStart($event, 'sw')"></div>
+          <div class="resize-handle resize-ne" @mousedown="onResizeStart($event, 'ne')"></div>
+          <div class="resize-handle resize-nw" @mousedown="onResizeStart($event, 'nw')"></div>
+          <div class="resize-handle resize-e" @mousedown="onResizeStart($event, 'e')"></div>
+          <div class="resize-handle resize-s" @mousedown="onResizeStart($event, 's')"></div>
+          <div class="resize-handle resize-n" @mousedown="onResizeStart($event, 'n')"></div>
+          <div class="resize-handle resize-w" @mousedown="onResizeStart($event, 'w')"></div>
+        </div>
+
+        <!-- 全屏模式 -->
+        <template v-else>
+          <div class="img-fullscreen-toolbar">
+            <span class="img-viewer-title">{{ imgViewer.fileName }}</span>
+            <span class="img-viewer-zoom-label">{{ Math.round(imgScale * 100) }}%</span>
+            <div class="img-viewer-actions">
+              <el-button link @click="zoomOut"><el-icon :size="18"><ZoomOut /></el-icon></el-button>
+              <el-button link @click="zoomIn"><el-icon :size="18"><ZoomIn /></el-icon></el-button>
+              <el-button link @click="fitImage"><el-icon :size="18"><Aim /></el-icon></el-button>
+              <el-button link @click="toggleImgFullscreen"><el-icon :size="18"><FullScreen /></el-icon></el-button>
+              <el-button link @click="closeImageViewer"><el-icon :size="18"><Close /></el-icon></el-button>
+            </div>
+          </div>
+          <div class="img-fullscreen-body" @mousedown="onImagePanStart">
+            <img
+              :src="imgViewer.url"
+              :alt="imgViewer.fileName"
+              class="img-viewer-image"
+              :style="{
+                transform: `translate(${imgTranslateX}px, ${imgTranslateY}px) scale(${imgScale})`,
+                cursor: imgScale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default'
+              }"
+              draggable="false"
+            />
+          </div>
+        </template>
+      </div>
+    </teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BackgroundSettings from '../components/BackgroundSettings.vue'
@@ -244,7 +328,7 @@ import { useBackground } from '../composables/useBackground'
 import { uploadFile, createFolder as createFolderApi, getFileList, downloadFile as downloadFileApi, deleteFile as deleteFileApi, getSpaceUsage, previewFile as previewFileApi, batchDelete as batchDeleteApi, batchDownload as batchDownloadApi, batchMove as batchMoveApi } from '../api/file'
 import { useDarkMode } from '../composables/useDarkMode'
 import {
-  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View, Sort, Sunny, Moon, Setting, PictureFilled, DataAnalysis
+  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View, Sort, Sunny, Moon, Setting, PictureFilled, DataAnalysis, ZoomIn, ZoomOut, FullScreen, Aim, Close
 } from '@element-plus/icons-vue'
 
 const { isDark, toggle: toggleTheme } = useDarkMode()
@@ -301,6 +385,171 @@ const previewFileInfo = ref({
   isText: false,
   isOffice: false
 })
+
+// 图片查看器
+const viewerBackdrop = ref(null)
+const imgViewer = ref({
+  show: false,
+  url: '',
+  fileName: '',
+  naturalWidth: 0,
+  naturalHeight: 0
+})
+const imgScale = ref(1)
+const imgTranslateX = ref(0)
+const imgTranslateY = ref(0)
+const imgFullscreen = ref(false)
+const imgWindow = ref({ x: 80, y: 60, width: 900, height: 600 })
+const isDragging = ref(false)
+const isPanning = ref(false)
+const dragStart = ref({ x: 0, y: 0 })
+const panStart = ref({ x: 0, y: 0, tx: 0, ty: 0 })
+const resizeDir = ref('')
+const resizeStart = ref({ x: 0, y: 0, w: 0, h: 0 })
+
+function openImageViewer(url, fileName) {
+  imgViewer.value.show = true
+  imgViewer.value.url = url
+  imgViewer.value.fileName = fileName
+  imgScale.value = 1
+  imgTranslateX.value = 0
+  imgTranslateY.value = 0
+  imgFullscreen.value = false
+  // Get natural image dimensions for fit calculation
+  const img = new Image()
+  img.onload = () => {
+    imgViewer.value.naturalWidth = img.naturalWidth
+    imgViewer.value.naturalHeight = img.naturalHeight
+  }
+  img.src = url
+  nextTick(() => {
+    viewerBackdrop.value?.focus()
+  })
+}
+
+function onViewerKeydown(e) {
+  if (e.key === 'Escape') closeImageViewer()
+  if (e.key === '+' || e.key === '=') zoomIn()
+  if (e.key === '-') zoomOut()
+  if (e.key === '0') fitImage()
+  if (e.key === 'f' || e.key === 'F') toggleImgFullscreen()
+}
+
+function closeImageViewer() {
+  if (imgViewer.value.url) {
+    URL.revokeObjectURL(imgViewer.value.url)
+  }
+  imgViewer.value.show = false
+  imgViewer.value.url = ''
+  imgScale.value = 1
+  imgTranslateX.value = 0
+  imgTranslateY.value = 0
+}
+
+function fitImage() {
+  imgScale.value = 1
+  imgTranslateX.value = 0
+  imgTranslateY.value = 0
+}
+
+function zoomIn() {
+  imgScale.value = Math.min(imgScale.value * 1.3, 10)
+}
+
+function zoomOut() {
+  imgScale.value = Math.max(imgScale.value / 1.3, 0.1)
+}
+
+function zoomImage(delta) {
+  const newScale = imgScale.value * (delta > 0 ? 1.15 : 1 / 1.15)
+  imgScale.value = Math.max(0.1, Math.min(10, newScale))
+}
+
+function toggleImgFullscreen() {
+  imgFullscreen.value = !imgFullscreen.value
+  fitImage()
+}
+
+// Window drag
+function onWindowDragStart(e) {
+  // Only drag from titlebar, not from buttons
+  if (e.target.closest('.img-viewer-titlebar') && !e.target.closest('.img-viewer-actions')) {
+    isDragging.value = true
+    dragStart.value = { x: e.clientX - imgWindow.value.x, y: e.clientY - imgWindow.value.y }
+    document.addEventListener('mousemove', onWindowDrag)
+    document.addEventListener('mouseup', onWindowDragEnd)
+  }
+}
+
+function onWindowDrag(e) {
+  if (!isDragging.value) return
+  imgWindow.value.x = Math.max(0, e.clientX - dragStart.value.x)
+  imgWindow.value.y = Math.max(0, e.clientY - dragStart.value.y)
+}
+
+function onWindowDragEnd() {
+  isDragging.value = false
+  document.removeEventListener('mousemove', onWindowDrag)
+  document.removeEventListener('mouseup', onWindowDragEnd)
+}
+
+// Window resize
+function onResizeStart(e, dir) {
+  e.stopPropagation()
+  resizeDir.value = dir
+  resizeStart.value = { x: e.clientX, y: e.clientY, w: imgWindow.value.width, h: imgWindow.value.height }
+  document.addEventListener('mousemove', onResize)
+  document.addEventListener('mouseup', onResizeEnd)
+}
+
+function onResize(e) {
+  if (!resizeDir.value) return
+  const dx = e.clientX - resizeStart.value.x
+  const dy = e.clientY - resizeStart.value.y
+  if (resizeDir.value.includes('e')) imgWindow.value.width = Math.max(400, resizeStart.value.w + dx)
+  if (resizeDir.value.includes('s')) imgWindow.value.height = Math.max(300, resizeStart.value.h + dy)
+  if (resizeDir.value.includes('w')) {
+    imgWindow.value.width = Math.max(400, resizeStart.value.w - dx)
+    imgWindow.value.x = resizeStart.value.x + dx - (resizeStart.value.w - imgWindow.value.width)
+  }
+  if (resizeDir.value.includes('n')) {
+    imgWindow.value.height = Math.max(300, resizeStart.value.h - dy)
+    imgWindow.value.y = resizeStart.value.y + dy - (resizeStart.value.h - imgWindow.value.height)
+  }
+}
+
+function onResizeEnd() {
+  resizeDir.value = ''
+  document.removeEventListener('mousemove', onResize)
+  document.removeEventListener('mouseup', onResizeEnd)
+}
+
+// Image pan
+function onImagePanStart(e) {
+  if (imgScale.value <= 1) return
+  e.preventDefault()
+  isPanning.value = true
+  panStart.value = { x: e.clientX, y: e.clientY, tx: imgTranslateX.value, ty: imgTranslateY.value }
+  document.addEventListener('mousemove', onImagePan)
+  document.addEventListener('mouseup', onImagePanEnd)
+}
+
+function onImagePan(e) {
+  if (!isPanning.value) return
+  imgTranslateX.value = panStart.value.tx + (e.clientX - panStart.value.x)
+  imgTranslateY.value = panStart.value.ty + (e.clientY - panStart.value.y)
+}
+
+function onImagePanEnd() {
+  isPanning.value = false
+  document.removeEventListener('mousemove', onImagePan)
+  document.removeEventListener('mouseup', onImagePanEnd)
+}
+
+function onWheel(e) {
+  e.preventDefault()
+  zoomImage(e.deltaY < 0 ? 1 : -1)
+}
 
 // 加载存储空间信息
 const loadSpaceUsage = async () => {
@@ -552,6 +801,19 @@ const previewFile = async (file) => {
     isAudio: fileIsAudio,
     isText: fileIsText,
     isOffice: fileIsOffice
+  }
+
+  // Image: use custom viewer
+  const fileIsImage = isImage(file.fileType, file.fileName) && !isPsdFile
+  if (fileIsImage) {
+    try {
+      const blob = await downloadFileApi(file.id)
+      const url = window.URL.createObjectURL(blob)
+      openImageViewer(url, file.fileName)
+    } catch (error) {
+      ElMessage.error('加载预览文件失败')
+    }
+    return
   }
 
   // Office files: no fetch needed, just show the dialog with download button
@@ -972,5 +1234,140 @@ onMounted(() => {
   color: var(--el-text-color-secondary);
   text-align: center;
   padding: 24px 0;
+}
+
+/* 图片查看器 */
+.img-viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  user-select: none;
+}
+
+.img-viewer-backdrop.img-fullscreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 浮动窗口 */
+.img-viewer-window {
+  position: fixed;
+  z-index: 10000;
+  background: var(--el-bg-color);
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 400px;
+  min-height: 300px;
+}
+
+.img-viewer-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--el-bg-color-overlay);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  cursor: move;
+  flex-shrink: 0;
+}
+
+.img-viewer-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.img-viewer-zoom-label {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  min-width: 40px;
+  text-align: center;
+}
+
+.img-viewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.img-viewer-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #1a1a1a;
+  position: relative;
+}
+
+.img-viewer-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 0.1s ease;
+  pointer-events: auto;
+}
+
+/* 调整大小手柄 */
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+}
+
+.resize-se { bottom: 0; right: 0; width: 16px; height: 16px; cursor: se-resize; }
+.resize-sw { bottom: 0; left: 0; width: 16px; height: 16px; cursor: sw-resize; }
+.resize-ne { top: 0; right: 0; width: 16px; height: 16px; cursor: ne-resize; }
+.resize-nw { top: 0; left: 0; width: 16px; height: 16px; cursor: nw-resize; }
+.resize-e { top: 0; right: 0; width: 6px; height: 100%; cursor: e-resize; }
+.resize-s { bottom: 0; left: 0; width: 100%; height: 6px; cursor: s-resize; }
+.resize-n { top: 0; left: 0; width: 100%; height: 6px; cursor: n-resize; }
+.resize-w { top: 0; left: 0; width: 6px; height: 100%; cursor: w-resize; }
+
+/* 全屏模式 */
+.img-fullscreen-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  color: #fff;
+}
+
+.img-fullscreen-toolbar .img-viewer-title {
+  color: #fff;
+}
+
+.img-fullscreen-toolbar .img-viewer-zoom-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.img-fullscreen-toolbar .img-viewer-actions .el-button {
+  color: #fff;
+}
+
+.img-fullscreen-body {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 </style>
