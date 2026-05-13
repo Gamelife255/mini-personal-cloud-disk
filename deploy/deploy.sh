@@ -135,16 +135,23 @@ info "后端构建完成"
 # ==========================================
 # 5. 构建前端
 # ==========================================
-echo "[5/6] 构建前端..."
-cd "$PROJECT_DIR/disk-frontend"
-npm install
-# 修复可能出现的权限问题
-chmod +x node_modules/.bin/* 2>/dev/null || true
-npx vite build
+echo "[5/6] 部署前端..."
+
+# 检查是否已有预构建的 dist（本地构建好传入）
+if [ -d "$PROJECT_DIR/disk-frontend/dist" ] && [ -f "$PROJECT_DIR/disk-frontend/dist/index.html" ]; then
+    warn "检测到已有 dist 目录，跳过构建直接使用"
+    warn "如需重新构建，先删除 disk-frontend/dist 再运行"
+else
+    echo "未找到预构建的前端，正在构建..."
+    cd "$PROJECT_DIR/disk-frontend"
+    npm install
+    chmod +x node_modules/.bin/* 2>/dev/null || true
+    NODE_OPTIONS="--max-old-space-size=2048" npx vite build
+fi
 
 sudo rm -rf "$FRONTEND_DIR"/*
-sudo cp -r dist/* "$FRONTEND_DIR/"
-info "前端构建完成"
+sudo cp -r "$PROJECT_DIR/disk-frontend/dist"/* "$FRONTEND_DIR/"
+info "前端部署完成"
 
 # ==========================================
 # 6. 配置 Nginx + 启动服务

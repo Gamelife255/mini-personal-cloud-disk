@@ -8,7 +8,7 @@ LOG_FILE="/opt/cloud-disk/backend/app.log"
 PID_FILE="/opt/cloud-disk/backend/app.pid"
 
 # JVM 参数，根据服务器内存调整
-JAVA_OPTS="-Xms256m -Xmx512m -Dfile.encoding=UTF-8"
+JAVA_OPTS="-Xms128m -Xmx256m -Dfile.encoding=UTF-8"
 
 mkdir -p "$JAR_DIR"
 
