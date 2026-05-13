@@ -2,7 +2,7 @@
 # Cloud Disk — 后端启动脚本
 # 用法: bash start-backend.sh [start|stop|restart|status]
 
-JAR_NAME="backend-1.0-SNAPSHOT.jar"
+JAR_NAME="backend.jar"
 JAR_DIR="/opt/cloud-disk/backend"
 LOG_FILE="/opt/cloud-disk/backend/app.log"
 PID_FILE="/opt/cloud-disk/backend/app.pid"

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Cloud Disk — 一键部署脚本
 # 用法: bash deploy.sh
-# 自动完成: 环境检查 → 数据库初始化 → 构建前后端 → 配置Nginx → 启动服务
+# 自动完成: 环境检查 → 配置密码 → 数据库初始化 → 构建前后端 → 配置Nginx → 启动服务
 
 set -e
 
@@ -23,6 +23,37 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 echo "=========================================="
 echo "  Cloud Disk 一键部署"
 echo "=========================================="
+echo ""
+
+# ==========================================
+# 0. 收集信息
+# ==========================================
+echo "请先确认以下信息："
+PUBLIC_IP=$(curl -s --connect-timeout 3 ifconfig.me 2>/dev/null || echo "")
+
+# 域名
+if [ -n "$PUBLIC_IP" ]; then
+    read -p "  域名或 IP [$PUBLIC_IP]: " DOMAIN
+    DOMAIN=${DOMAIN:-$PUBLIC_IP}
+else
+    read -p "  域名或 IP (必填): " DOMAIN
+    [ -z "$DOMAIN" ] && error "请输入域名或 IP"
+fi
+
+# MySQL 密码
+read -sp "  MySQL root 密码: " MYSQL_PASS
+echo ""
+
+# 应用配置密码
+APP_CONF="$PROJECT_DIR/disk-backend/backend/src/main/resources/application.yml"
+if [ -f "$APP_CONF" ] && [ -n "$MYSQL_PASS" ]; then
+    CURRENT_PASS=$(grep -oP 'password:\s*\K.*' "$APP_CONF" | head -1)
+    if [ "$CURRENT_PASS" != "$MYSQL_PASS" ] && [ -n "$CURRENT_PASS" ]; then
+        sed -i "s/password: $CURRENT_PASS/password: $MYSQL_PASS/" "$APP_CONF"
+        info "已更新 application.yml 中的数据库密码"
+    fi
+fi
+
 echo ""
 
 # ==========================================
@@ -65,16 +96,15 @@ fi
 if command -v mysql &>/dev/null; then
     info "MySQL: 已安装"
 else
-    warn "未找到 MySQL 客户端，将跳过数据库初始化"
+    warn "未找到 MySQL，将跳过数据库初始化"
 fi
 
-# Nginx
-if command -v nginx &>/dev/null; then
-    info "Nginx: $(nginx -v 2>&1)"
-else
+# Nginx: 如果未安装，自动安装
+if ! command -v nginx &>/dev/null; then
     warn "未安装 Nginx，正在安装..."
-    sudo apt update && sudo apt install nginx -y
+    sudo apt update -qq && sudo apt install nginx -y -qq
 fi
+info "Nginx: $(nginx -v 2>&1)"
 
 echo ""
 
@@ -85,21 +115,17 @@ echo "[2/6] 初始化数据库..."
 
 SQL_FILE="$PROJECT_DIR/sql/schema.sql"
 
-if [ -f "$SQL_FILE" ] && command -v mysql &>/dev/null; then
-    echo "请输入 MySQL root 密码:"
-    read -s MYSQL_PASS
-
+if [ -f "$SQL_FILE" ] && command -v mysql &>/dev/null && [ -n "$MYSQL_PASS" ]; then
     if mysql -u root -p"$MYSQL_PASS" -e "SELECT 1" 2>/dev/null; then
         mysql -u root -p"$MYSQL_PASS" < "$SQL_FILE"
         info "数据库初始化完成"
     else
         warn "MySQL 连接失败，请手动执行: mysql -u root -p < sql/schema.sql"
-        MYSQL_PASS=""
     fi
-    echo ""
 else
-    warn "跳过数据库初始化（sql/schema.sql 不存在或 mysql 未安装）"
+    warn "跳过数据库初始化"
 fi
+echo ""
 
 # ==========================================
 # 3. 创建部署目录
@@ -116,33 +142,28 @@ info "目录已创建: $DEPLOY_DIR"
 echo "[4/6] 构建后端..."
 cd "$PROJECT_DIR/disk-backend/backend"
 
-# 如果存在 application.yml，更新上传路径为 Linux 路径
+# 修正 Windows 路径
 if grep -q "E:/disk/upload/" src/main/resources/application.yml 2>/dev/null; then
     sed -i 's|E:/disk/upload/|/opt/cloud-disk/upload/|g' src/main/resources/application.yml
-    info "已自动修正上传路径为 Linux 路径"
+    info "已自动修正上传路径"
 fi
 
-info "正在编译后端（首次需下载依赖，请耐心等待）..."
+info "编译后端（首次需下载依赖，请耐心等待）..."
 mvn clean package -DskipTests
 
 JAR_FILE=$(find target -name "*.jar" -not -name "*sources*" | head -1)
-if [ -z "$JAR_FILE" ]; then
-    error "后端构建失败"
-fi
-cp "$JAR_FILE" "$BACKEND_DIR/backend-1.0-SNAPSHOT.jar"
+[ -z "$JAR_FILE" ] && error "后端构建失败"
+cp "$JAR_FILE" "$BACKEND_DIR/backend.jar"
 info "后端构建完成"
 
 # ==========================================
-# 5. 构建前端
+# 5. 部署前端
 # ==========================================
 echo "[5/6] 部署前端..."
 
-# 检查是否已有预构建的 dist（本地构建好传入）
 if [ -d "$PROJECT_DIR/disk-frontend/dist" ] && [ -f "$PROJECT_DIR/disk-frontend/dist/index.html" ]; then
-    warn "检测到已有 dist 目录，跳过构建直接使用"
-    warn "如需重新构建，先删除 disk-frontend/dist 再运行"
+    warn "检测到已有 dist，跳过构建（如需重建请先删除 disk-frontend/dist）"
 else
-    echo "未找到预构建的前端，正在构建..."
     cd "$PROJECT_DIR/disk-frontend"
     npm install
     chmod +x node_modules/.bin/* 2>/dev/null || true
@@ -158,33 +179,50 @@ info "前端部署完成"
 # ==========================================
 echo "[6/6] 配置 Nginx 并启动服务..."
 
-# 配置 Nginx
-NGINX_CONF="$PROJECT_DIR/deploy/nginx.conf"
-if [ -f "$NGINX_CONF" ]; then
-    sudo cp "$NGINX_CONF" /etc/nginx/sites-available/cloud-disk
+# 生成 nginx 配置
+sudo tee /etc/nginx/sites-available/cloud-disk > /dev/null << NGINX_EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
 
-    # 启用站点（如果尚未启用）
-    if [ ! -f /etc/nginx/sites-enabled/cloud-disk ]; then
-        sudo ln -sf /etc/nginx/sites-available/cloud-disk /etc/nginx/sites-enabled/
-    fi
+    root $FRONTEND_DIR;
+    index index.html;
 
-    # 删除默认站点（避免冲突）
-    sudo rm -f /etc/nginx/sites-enabled/default
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
 
-    # 测试配置并启动/重载 Nginx
-    if sudo nginx -t 2>/dev/null; then
-        if sudo systemctl is-active --quiet nginx 2>/dev/null; then
-            sudo systemctl reload nginx
-        else
-            sudo systemctl start nginx
-        fi
-        info "Nginx 配置完成"
+    location /api/ {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        client_max_body_size 500m;
+    }
+}
+NGINX_EOF
+
+# 清理冲突的站点
+sudo rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-enabled/cloud
+
+# 启用
+sudo ln -sf /etc/nginx/sites-available/cloud-disk /etc/nginx/sites-enabled/
+
+# 测试并启动
+if sudo nginx -t 2>/dev/null; then
+    if sudo systemctl is-active --quiet nginx 2>/dev/null; then
+        sudo systemctl reload nginx
     else
-        warn "Nginx 配置测试失败，请检查 /etc/nginx/sites-available/cloud-disk"
+        sudo systemctl start nginx
     fi
+    info "Nginx 配置完成"
 else
-    warn "未找到 nginx.conf 模板，跳过 Nginx 配置"
+    warn "Nginx 测试失败，请检查配置"
 fi
+
+# 更新启动脚本中的 jar 名称
+sed -i 's/backend-1.0-SNAPSHOT.jar/backend.jar/' "$PROJECT_DIR/deploy/start-backend.sh"
 
 # 启动后端
 bash "$PROJECT_DIR/deploy/start-backend.sh" restart
@@ -194,13 +232,16 @@ echo "=========================================="
 echo "  部署完成！"
 echo "=========================================="
 echo ""
-echo "  访问地址:  http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo '你的服务器IP')"
+echo "  访问地址:  http://$DOMAIN"
+[ -n "$PUBLIC_IP" ] && echo "  公网 IP:   http://$PUBLIC_IP"
 echo "  前端目录:  $FRONTEND_DIR"
 echo "  上传目录:  $UPLOAD_DIR"
 echo "  后端日志:  $BACKEND_DIR/app.log"
 echo ""
 echo "  管理命令:"
-echo "    查看状态: bash deploy/start-backend.sh status"
-echo "    重启后端: bash deploy/start-backend.sh restart"
-echo "    查看日志: tail -f $BACKEND_DIR/app.log"
+echo "    状态:   bash deploy/start-backend.sh status"
+echo "    重启:   bash deploy/start-backend.sh restart"
+echo "    日志:   tail -f $BACKEND_DIR/app.log"
+echo ""
+echo "  ⚠ 确保云服务商安全组已放行 80 端口"
 echo "=========================================="
