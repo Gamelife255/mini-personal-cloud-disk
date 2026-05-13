@@ -122,7 +122,8 @@ if grep -q "E:/disk/upload/" src/main/resources/application.yml 2>/dev/null; the
     info "已自动修正上传路径为 Linux 路径"
 fi
 
-mvn clean package -DskipTests -q
+info "正在编译后端（首次需下载依赖，请耐心等待）..."
+mvn clean package -DskipTests
 
 JAR_FILE=$(find target -name "*.jar" -not -name "*sources*" | head -1)
 if [ -z "$JAR_FILE" ]; then
@@ -136,8 +137,10 @@ info "后端构建完成"
 # ==========================================
 echo "[5/6] 构建前端..."
 cd "$PROJECT_DIR/disk-frontend"
-npm install --silent 2>/dev/null || npm install
-npm run build
+npm install
+# 修复可能出现的权限问题
+chmod +x node_modules/.bin/* 2>/dev/null || true
+npx vite build
 
 sudo rm -rf "$FRONTEND_DIR"/*
 sudo cp -r dist/* "$FRONTEND_DIR/"
