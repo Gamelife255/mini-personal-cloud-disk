@@ -131,7 +131,7 @@
           </el-table-column>
           <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
-              <el-button link @click="previewFile(row)" v-if="isImage(row.fileType, row.fileName) || isVideo(row.fileType)">
+              <el-button link @click="previewFile(row)" v-if="isPreviewable(row.fileType, row.fileName)">
                 <el-icon><View /></el-icon>
               </el-button>
               <el-button link @click="downloadFile(row)" v-if="!row.isFolder">
@@ -185,6 +185,16 @@
         <video v-else-if="previewFileInfo.isVideo" :src="previewUrl" controls class="preview-video">
           您的浏览器不支持视频播放
         </video>
+        <audio v-else-if="previewFileInfo.isAudio" :src="previewUrl" controls class="preview-audio">
+          您的浏览器不支持音频播放
+        </audio>
+        <iframe v-else-if="previewFileInfo.isPdf" :src="previewUrl" class="preview-pdf"></iframe>
+        <pre v-else-if="previewFileInfo.isText" class="preview-text">{{ previewTextContent }}</pre>
+        <div v-else-if="previewFileInfo.isOffice" class="preview-not-supported">
+          <el-icon :size="48" class="preview-icon"><Document /></el-icon>
+          <p>此文件类型暂不支持在线预览</p>
+          <p class="preview-hint">请下载后使用本地应用打开</p>
+        </div>
         <div v-else class="preview-not-supported">
           <el-icon :size="48" class="preview-icon"><Document /></el-icon>
           <p>暂不支持此文件类型预览</p>
@@ -192,7 +202,7 @@
       </div>
       <template #footer>
         <el-button @click="showPreview = false">关闭</el-button>
-        <el-button type="primary" @click="downloadFile(previewFileInfo)">下载</el-button>
+        <el-button type="primary" @click="downloadFile(previewFileInfo)">{{ previewFileInfo.isOffice ? '下载后查看' : '下载' }}</el-button>
       </template>
     </el-dialog>
 
@@ -265,12 +275,17 @@ const storageColor = ref('#409EFF')
 // 预览相关
 const showPreview = ref(false)
 const previewUrl = ref('')
+const previewTextContent = ref('')
 const previewFileInfo = ref({
   id: null,
   fileName: '',
   fileType: '',
   isImage: false,
-  isVideo: false
+  isVideo: false,
+  isPdf: false,
+  isAudio: false,
+  isText: false,
+  isOffice: false
 })
 
 // 加载存储空间信息
@@ -371,10 +386,27 @@ const ALLOWED_EXTENSIONS = new Set([
 const isImage = (type, fileName) => type?.startsWith('image/') || isPsd(fileName)
 const isVideo = (type) => type?.startsWith('video/')
 const isDocument = (type) => {
-  const docTypes = ['application/pdf', 'text/plain', 'application/msword', 
+  const docTypes = ['application/pdf', 'text/plain', 'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
   return docTypes.includes(type)
 }
+
+const isPdf = (type) => type === 'application/pdf'
+const isAudio = (type) => type?.startsWith('audio/')
+const isText = (type) => type?.startsWith('text/')
+const isOffice = (type) => {
+  const officeTypes = [
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  ]
+  return officeTypes.includes(type)
+}
+const isPreviewable = (type, fileName) =>
+  isImage(type, fileName) || isVideo(type) || isPdf(type) || isAudio(type) || isText(type) || isOffice(type)
 
 // 格式化文件大小
 const formatFileSize = (bytes) => {
@@ -491,16 +523,40 @@ const isPsd = (fileName) => {
 // 预览文件
 const previewFile = async (file) => {
   const isPsdFile = isPsd(file.fileName)
+  const fileIsPdf = isPdf(file.fileType)
+  const fileIsAudio = isAudio(file.fileType)
+  const fileIsText = isText(file.fileType)
+  const fileIsOffice = isOffice(file.fileType)
+
   previewFileInfo.value = {
     id: file.id,
     fileName: file.fileName,
     fileType: file.fileType,
     isImage: isImage(file.fileType, file.fileName),
-    isVideo: isVideo(file.fileType)
+    isVideo: isVideo(file.fileType),
+    isPdf: fileIsPdf,
+    isAudio: fileIsAudio,
+    isText: fileIsText,
+    isOffice: fileIsOffice
   }
+
+  // Office files: no fetch needed, just show the dialog with download button
+  if (fileIsOffice) {
+    showPreview.value = true
+    return
+  }
+
   try {
-    const blob = isPsdFile ? await previewFileApi(file.id) : await downloadFileApi(file.id)
-    previewUrl.value = window.URL.createObjectURL(blob)
+    if (isPsdFile || fileIsPdf || fileIsAudio) {
+      const blob = await previewFileApi(file.id)
+      previewUrl.value = window.URL.createObjectURL(blob)
+    } else if (fileIsText) {
+      const blob = await downloadFileApi(file.id)
+      previewTextContent.value = await blob.text()
+    } else {
+      const blob = await downloadFileApi(file.id)
+      previewUrl.value = window.URL.createObjectURL(blob)
+    }
     showPreview.value = true
   } catch (error) {
     ElMessage.error('加载预览文件失败')
@@ -669,9 +725,12 @@ const logout = () => {
 
 // 预览关闭时释放 blob URL
 watch(showPreview, (newVal) => {
-  if (!newVal && previewUrl.value) {
-    window.URL.revokeObjectURL(previewUrl.value)
-    previewUrl.value = ''
+  if (!newVal) {
+    if (previewUrl.value) {
+      window.URL.revokeObjectURL(previewUrl.value)
+      previewUrl.value = ''
+    }
+    previewTextContent.value = ''
   }
 })
 
@@ -817,6 +876,39 @@ onMounted(() => {
   max-width: 100%;
   max-height: 500px;
   object-fit: contain;
+}
+
+.preview-audio {
+  width: 100%;
+  max-width: 500px;
+}
+
+.preview-pdf {
+  width: 100%;
+  height: 500px;
+  border: none;
+}
+
+.preview-text {
+  width: 100%;
+  max-height: 500px;
+  overflow: auto;
+  padding: 16px;
+  margin: 0;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  border-radius: 4px;
+}
+
+.preview-hint {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
 }
 
 .preview-not-supported {
