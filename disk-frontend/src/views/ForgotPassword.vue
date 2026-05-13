@@ -1,5 +1,6 @@
 <template>
-  <div class="forgot-container">
+  <div class="forgot-container" :style="containerBackground">
+    <div v-if="isCustom" class="bg-layer" :style="bgLayerStyle"></div>
     <div class="forgot-box">
       <el-button link class="theme-toggle" @click="toggleTheme">
         <el-icon :size="20"><Sunny v-if="isDark" /><Moon v-else /></el-icon>
@@ -52,9 +53,11 @@ import { useRouter } from 'vue-router'
 import { sendResetCode, resetPassword } from '../api/user'
 import { ElMessage } from 'element-plus'
 import { useDarkMode } from '../composables/useDarkMode'
+import { useBackground } from '../composables/useBackground'
 import { Sunny, Moon } from '@element-plus/icons-vue'
 
 const { isDark, toggle: toggleTheme } = useDarkMode()
+const { containerBackground, isCustom, bgLayerStyle } = useBackground('auth')
 
 const router = useRouter()
 const loading = ref(false)

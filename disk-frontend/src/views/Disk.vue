@@ -1,5 +1,6 @@
 <template>
-  <div class="disk-container">
+  <div class="disk-container" :style="containerBackground">
+    <div v-if="isCustom" class="bg-layer" :style="bgLayerStyle"></div>
     <!-- 顶部导航栏 -->
     <el-header class="disk-header">
       <div class="header-left">
@@ -8,6 +9,9 @@
       <div class="header-right">
         <el-button link class="theme-toggle" @click="toggleTheme">
           <el-icon :size="18"><Sunny v-if="isDark" /><Moon v-else /></el-icon>
+        </el-button>
+        <el-button link class="bg-settings-btn" @click="showSettings = !showSettings" title="背景设置">
+          <el-icon :size="18"><PictureFilled /></el-icon>
         </el-button>
         <span class="username">{{ user?.username }}</span>
         <el-button link @click="logout">退出登录</el-button>
@@ -39,6 +43,10 @@
             <el-icon><More /></el-icon>
             <span>其他</span>
           </el-menu-item>
+          <el-menu-item index="statistics" @click="goToStatistics">
+            <el-icon><DataAnalysis /></el-icon>
+            <span>数据统计</span>
+          </el-menu-item>
           <template v-if="isAdmin">
             <el-menu-item index="admin" @click="goToAdmin">
               <el-icon><Setting /></el-icon>
@@ -56,7 +64,7 @@
       </el-aside>
 
       <!-- 右侧文件区 -->
-      <el-main class="disk-content">
+      <el-main class="disk-content" :style="isCustom ? { backgroundColor: 'transparent' } : {}">
         <!-- 工具栏 -->
         <div class="toolbar">
           <el-button type="primary" @click="showUpload = true">
@@ -221,6 +229,9 @@
         <el-button type="primary" @click="handleBatchMove" :disabled="moveTargetFolderId === null || moveTargetFolderId === undefined">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 背景设置 -->
+    <BackgroundSettings context="disk" />
   </div>
 </template>
 
@@ -228,13 +239,16 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import BackgroundSettings from '../components/BackgroundSettings.vue'
+import { useBackground } from '../composables/useBackground'
 import { uploadFile, createFolder as createFolderApi, getFileList, downloadFile as downloadFileApi, deleteFile as deleteFileApi, getSpaceUsage, previewFile as previewFileApi, batchDelete as batchDeleteApi, batchDownload as batchDownloadApi, batchMove as batchMoveApi } from '../api/file'
 import { useDarkMode } from '../composables/useDarkMode'
 import {
-  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View, Sort, Sunny, Moon, Setting
+  Folder, Picture, VideoCamera, Document, More, Upload, Download, Delete, FolderAdd, Search, View, Sort, Sunny, Moon, Setting, PictureFilled, DataAnalysis
 } from '@element-plus/icons-vue'
 
 const { isDark, toggle: toggleTheme } = useDarkMode()
+const { showSettings, containerBackground, isCustom, bgLayerStyle } = useBackground('disk')
 
 const router = useRouter()
 const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
@@ -710,6 +724,10 @@ const handleBatchMove = async () => {
   } catch (error) {
     ElMessage.error('批量移动失败')
   }
+}
+
+const goToStatistics = () => {
+  router.push('/statistics')
 }
 
 const goToAdmin = () => {

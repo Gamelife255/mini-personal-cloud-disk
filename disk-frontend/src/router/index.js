@@ -4,6 +4,7 @@ import Register from '../views/Register.vue'
 import ForgotPassword from '../views/ForgotPassword.vue'
 import Disk from '../views/Disk.vue'
 import Admin from '../views/Admin.vue'
+import Statistics from '../views/Statistics.vue'
 
 const routes = [
   {
@@ -28,6 +29,12 @@ const routes = [
     path: '/disk',
     name: 'Disk',
     component: Disk,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/statistics',
+    name: 'Statistics',
+    component: Statistics,
     meta: { requiresAuth: true }
   },
   {

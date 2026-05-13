@@ -20,4 +20,5 @@ public interface FileMapper {
     List<File> findAll();
     List<File> findByUserIdAndParentIdIgnoreOwnership(@Param("userId") Long userId, @Param("parentId") Long parentId,
                                                        @Param("sortBy") String sortBy, @Param("sortOrder") String sortOrder);
+    java.util.List<java.util.Map<String, Object>> countFilesByUploadDate(@Param("userId") Long userId, @Param("since") Long since);
 }

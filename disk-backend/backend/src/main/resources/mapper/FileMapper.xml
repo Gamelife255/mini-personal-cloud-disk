@@ -77,6 +77,13 @@
         SELECT * FROM files ORDER BY updated_at DESC
     </select>
 
+    <select id="countFilesByUploadDate" resultType="java.util.HashMap">
+        SELECT DATE(FROM_UNIXTIME(created_at / 1000)) as date, COUNT(*) as count
+        FROM files WHERE user_id = #{userId} AND is_folder = 0
+        AND created_at >= #{since}
+        GROUP BY date ORDER BY date ASC
+    </select>
+
     <select id="findByUserIdAndParentIdIgnoreOwnership" resultMap="FileResultMap">
         SELECT * FROM files WHERE user_id = #{userId} AND parent_id = #{parentId}
         ORDER BY is_folder DESC, updated_at DESC

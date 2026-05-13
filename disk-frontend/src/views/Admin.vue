@@ -1,5 +1,6 @@
 <template>
-  <div class="admin-container">
+  <div class="admin-container" :style="containerBackground">
+    <div v-if="isCustom" class="bg-layer" :style="bgLayerStyle"></div>
     <el-header class="admin-header">
       <div class="header-left">
         <span class="logo">☁️ 管理后台</span>
@@ -8,6 +9,9 @@
         <el-button link class="theme-toggle" @click="toggleTheme">
           <el-icon :size="18"><Sunny v-if="isDark" /><Moon v-else /></el-icon>
         </el-button>
+        <el-button link class="bg-settings-btn" @click="showSettings = !showSettings" title="背景设置">
+          <el-icon :size="18"><PictureFilled /></el-icon>
+        </el-button>
         <span class="username">{{ user?.username }}</span>
         <el-button link @click="goToDisk">返回云盘</el-button>
         <el-button link @click="logout">退出登录</el-button>
@@ -15,7 +19,7 @@
     </el-header>
 
     <el-container class="admin-main">
-      <el-main>
+      <el-main :style="isCustom ? { backgroundColor: 'transparent' } : {}">
         <el-tabs v-model="activeTab">
           <el-tab-pane label="用户管理" name="users">
             <el-table :data="users" v-loading="loadingUsers" style="width: 100%">
@@ -115,6 +119,9 @@
         <el-button type="primary" @click="handleResetPassword" :loading="resetting">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 背景设置 -->
+    <BackgroundSettings context="admin" />
   </div>
 </template>
 
@@ -124,12 +131,15 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getUsers, updateUserStatus, resetUserPassword, getUserFiles } from '../api/admin'
 import { useDarkMode } from '../composables/useDarkMode'
+import { useBackground } from '../composables/useBackground'
+import BackgroundSettings from '../components/BackgroundSettings.vue'
 import {
-  Folder, Document, Picture, VideoCamera, Files, Sunny, Moon
+  Folder, Document, Picture, VideoCamera, Files, Sunny, Moon, PictureFilled
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const { isDark, toggle: toggleTheme } = useDarkMode()
+const { showSettings, containerBackground, isCustom, bgLayerStyle } = useBackground('admin')
 const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
 
 const activeTab = ref('users')

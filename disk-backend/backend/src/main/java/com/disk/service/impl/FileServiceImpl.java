@@ -58,7 +58,30 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    public List<File> findByUserId(Long userId) {
+        return fileMapper.findByUserId(userId);
+    }
+
+    @Override
     public Long getUsedSpace(Long userId) {
         return fileMapper.sumFileSizeByUserId(userId);
+    }
+
+    @Override
+    public int countFiles(Long userId) {
+        List<File> all = fileMapper.findByUserId(userId);
+        return (int) all.stream().filter(f -> f.getIsFolder() != 1).count();
+    }
+
+    @Override
+    public int countFolders(Long userId) {
+        List<File> all = fileMapper.findByUserId(userId);
+        return (int) all.stream().filter(f -> f.getIsFolder() == 1).count();
+    }
+
+    @Override
+    public java.util.List<java.util.Map<String, Object>> getUploadHistory(Long userId, int days) {
+        long since = System.currentTimeMillis() - (long) days * 24 * 3600 * 1000;
+        return fileMapper.countFilesByUploadDate(userId, since);
     }
 }
