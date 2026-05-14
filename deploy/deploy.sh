@@ -89,7 +89,7 @@ check_tool() {
     if command -v "$check_cmd" &>/dev/null; then
         if [ -n "$min_ver" ]; then
             local ver
-            ver=$("$check_cmd" -version 2>&1 | head -1 | grep -oP '\d+' | head -1)
+            ver=$("$check_cmd" --version 2>&1 | head -1 | grep -oP '\d+' | head -1)
             if [ "$ver" -ge "$min_ver" ] 2>/dev/null; then
                 info "$name: 已安装 ✓"
             else
