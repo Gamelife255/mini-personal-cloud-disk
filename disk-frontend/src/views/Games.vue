@@ -93,7 +93,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Browser } from 'jsnes'
 import { useDarkMode } from '../composables/useDarkMode'
 import { useBackground } from '../composables/useBackground'
 import { ArrowLeft, FolderOpened, VideoPlay, RefreshLeft, VideoPause, Switch, Sunny, Moon } from '@element-plus/icons-vue'
@@ -125,7 +124,7 @@ const loadROM = (romData, name) => {
 
   nextTick(() => {
     try {
-      browser = new Browser({
+      browser = new window.jsnes.Browser({
         container: nesContainer.value,
         romData,
         onError: (e) => {
