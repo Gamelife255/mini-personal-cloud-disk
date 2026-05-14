@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import ForgotPassword from '../views/ForgotPassword.vue'
+import Portal from '../views/Portal.vue'
 import Disk from '../views/Disk.vue'
 import Admin from '../views/Admin.vue'
 import Statistics from '../views/Statistics.vue'
@@ -26,6 +27,12 @@ const routes = [
     meta: { public: true }
   },
   {
+    path: '/portal',
+    name: 'Portal',
+    component: Portal,
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/disk',
     name: 'Disk',
     component: Disk,
@@ -45,7 +52,7 @@ const routes = [
   },
   {
     path: '/',
-    redirect: '/disk'
+    redirect: '/portal'
   }
 ]
 
@@ -61,9 +68,9 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !token) {
     next('/login')
   } else if (to.meta.requiresAdmin && user.role !== 'admin') {
-    next('/disk')
+    next('/portal')
   } else if ((to.path === '/login' || to.path === '/register' || to.path === '/forgot-password') && token) {
-    next('/disk')
+    next('/portal')
   } else {
     next()
   }
