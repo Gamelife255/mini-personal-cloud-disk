@@ -3,7 +3,11 @@
     "allow": [
       "Bash(mvn --version)",
       "Bash(java -cp '__TRACKED_VAR__;target/test-classes' com.disk.BcryptGen)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(ls -la \"/opt/cloud-disk\" 2>/dev/null || echo \"No /opt/cloud-disk \\(not WSL or remote paths\\)\")",
+      "Read(//opt/**)",
+      "Bash(cat ~/.ssh/config 2>/dev/null || echo \"No SSH config\")",
+      "Read(//c/Users/20551/.ssh/**)"
     ]
   }
 }
