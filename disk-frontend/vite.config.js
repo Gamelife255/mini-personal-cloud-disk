@@ -12,5 +12,18 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    target: 'es2020',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          jsnes: ['jsnes']
+        }
+      }
+    }
+  },
+  optimizeDeps: {
+    exclude: ['jsnes']
   }
 })
