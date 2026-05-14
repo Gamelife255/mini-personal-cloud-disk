@@ -99,11 +99,123 @@ npm run dev
 - 前端地址：http://localhost:5173
 - 后端地址：http://localhost:8080
 
-### 一键启动（Windows）
+### 一键启动（Windows 本地开发）
 ```bash
 # 使用一键启动脚本
 script/start.bat
 ```
+
+---
+
+## 🖥️ Linux 服务器部署
+
+项目提供了一套完整的 Linux 服务器部署脚本，位于 `deploy/` 目录下。适用于 **Ubuntu 20.04 / 22.04 / 24.04**。
+
+### 脚本概览
+
+| 脚本 | 用途 | 何时使用 |
+|------|------|----------|
+| `setup-env.sh` | 安装所有运行依赖 | 全新服务器，仅需执行一次 |
+| `deploy.sh` | 一键构建并部署前后端 | 每次更新代码后重新部署 |
+| `start-backend.sh` | 后端服务启停管理 | 日常运维 |
+| `service-control.sh` | 交互式前后端服务管理 | 日常运维（带菜单界面） |
+
+### 全新服务器部署（只需两步）
+
+#### 第一步：安装服务器环境
+
+```bash
+# 上传项目到服务器后，进入项目目录
+cd mini-personal-cloud-disk
+
+# 执行环境安装（需 sudo 权限的用户）
+bash deploy/setup-env.sh
+```
+
+该脚本会自动完成以下安装和配置：
+- **JDK 17** — Java 运行环境
+- **Node.js 18** — 前端构建工具
+- **Maven** — 后端项目构建
+- **MySQL** — 数据库服务，并引导设置 root 密码
+- **Nginx** — Web 服务器与反向代理
+- **Git** — 版本管理工具
+- **防火墙** — 自动检测并放行 80/22 端口
+
+> 已安装的组件会自动跳过，不会重复安装。
+
+#### 第二步：一键部署
+
+```bash
+bash deploy/deploy.sh
+```
+
+部署过程中会询问：
+- **域名或 IP 地址** — 自动检测公网 IP，直接回车即可
+- **MySQL root 密码** — 用于初始化数据库
+
+脚本按顺序执行 6 个阶段：
+
+| 阶段 | 操作 |
+|------|------|
+| 1. 环境检查 | 验证 JDK、Node.js、Maven、MySQL、Nginx 是否就绪 |
+| 2. 数据库初始化 | 执行建表 SQL，创建数据库表结构 |
+| 3. 创建部署目录 | 建立 `/opt/cloud-disk/` 下的前端、后端、上传目录 |
+| 4. 构建后端 | Maven 编译打包，自动修正 Windows 上传路径为 Linux 路径 |
+| 5. 部署前端 | npm 构建并复制到 Nginx 静态目录 |
+| 6. 配置 Nginx | 生成站点配置、反向代理 `/api/` 到后端 8080 端口，启动全部服务 |
+
+### 日常运维命令
+
+```bash
+# 查看后端服务状态（含内存占用、运行时长、最新日志）
+bash deploy/start-backend.sh status
+
+# 重启后端服务
+bash deploy/start-backend.sh restart
+
+# 停止后端服务
+bash deploy/start-backend.sh stop
+
+# 启动后端服务
+bash deploy/start-backend.sh start
+
+# 交互式管理菜单（可同时管理后端 + Nginx）
+bash deploy/service-control.sh
+
+# 查看后端实时日志
+tail -f /opt/cloud-disk/backend/app.log
+```
+
+### 部署后目录结构
+
+```
+/opt/cloud-disk/
+├── backend/                   # 后端 JAR + 日志
+│   ├── backend.jar            # Spring Boot 可执行 JAR
+│   ├── app.log                # 应用运行日志
+│   └── app.pid                # 进程 PID 文件
+├── frontend/                  # 前端静态文件（Nginx 根目录）
+│   ├── index.html
+│   └── assets/
+└── upload/                    # 用户上传文件存储目录
+```
+
+### 常见问题
+
+**Q: 部署后无法访问？**
+1. 确认云服务商安全组已放行 **80 (TCP)** 端口
+2. 检查服务状态：`bash deploy/service-control.sh` 选择"查看服务状态"
+3. 查看后端日志：`tail -f /opt/cloud-disk/backend/app.log`
+
+**Q: 更新代码后如何重新部署？**
+```bash
+git pull
+bash deploy/deploy.sh
+```
+
+**Q: MySQL 连接失败？**
+- 确认密码正确：`mysql -u root -p`
+- 如需重置密码：`sudo mysql` 然后执行 ALTER USER 语句
 
 ## 📁 项目结构
 
@@ -118,7 +230,12 @@ mini-personal-cloud-disk/
 │   ├── src/                   # Vue源代码
 │   ├── package.json           # npm依赖
 │   └── vite.config.js         # Vite配置
-├── script/                    # 脚本文件
+├── deploy/                    # Linux 服务器部署脚本
+│   ├── setup-env.sh           # 服务器环境一键安装
+│   ├── deploy.sh              # 一键部署脚本
+│   ├── start-backend.sh       # 后端服务管理
+│   └── service-control.sh     # 交互式服务管理
+├── script/                    # Windows 脚本
 │   └── start.bat              # 一键启动脚本
 ├── study.md                   # 学习笔记
 └── README.md                  # 项目说明

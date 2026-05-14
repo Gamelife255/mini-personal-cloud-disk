@@ -197,24 +197,14 @@ step "5" "部署前端项目"
 
 cd "$PROJECT_DIR/disk-frontend"
 
-if [ -d "dist" ] && [ -f "dist/index.html" ]; then
-    warn "检测到已有前端构建产物 (dist/)"
-    read -p "  → 是否重新构建？(y/N): " REBUILD_FRONTEND
-    if [ "$REBUILD_FRONTEND" = "y" ] || [ "$REBUILD_FRONTEND" = "Y" ]; then
-        echo "  正在删除旧的前端构建产物..."
-        rm -rf dist node_modules/.vite 2>/dev/null || true
-        FORCE_REBUILD=true
-    else
-        echo "  跳过前端构建，使用已有产物"
-        FORCE_REBUILD=false
-    fi
-else
-    FORCE_REBUILD=true
+# 清理旧构建产物，确保每次部署都是服务器本地构建
+if [ -d "dist" ]; then
+    warn "检测到已有前端构建产物，正在清理..."
+    rm -rf dist node_modules/.vite 2>/dev/null || true
 fi
 
-if [ "$FORCE_REBUILD" = true ]; then
-    echo "  正在安装前端依赖..."
-    npm install
+echo "  正在安装前端依赖..."
+npm install
 
     echo "  正在构建前端项目..."
     chmod +x node_modules/.bin/* 2>/dev/null || true
