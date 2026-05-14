@@ -40,10 +40,13 @@
         </el-tab-pane>
 
         <el-tab-pane label="小游戏" name="games">
-          <div class="tab-content placeholder">
+          <div class="tab-content">
             <div class="tab-icon">🎮</div>
-            <h3>小游戏</h3>
-            <p>敬请期待</p>
+            <h3>小霸王游戏机</h3>
+            <p>NES 经典游戏模拟器</p>
+            <el-button type="primary" class="enter-btn" @click="goToGames">
+              进入游戏
+            </el-button>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -78,6 +81,10 @@ const userInitial = computed(() => (username.value || 'U')[0].toUpperCase())
 
 const goToDisk = () => {
   router.push('/disk')
+}
+
+const goToGames = () => {
+  router.push('/games')
 }
 
 const handleLogout = () => {

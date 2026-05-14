@@ -14,6 +14,7 @@
           <el-icon :size="18"><PictureFilled /></el-icon>
         </el-button>
         <span class="username">{{ user?.username }}</span>
+        <el-button link @click="goToPortal">返回门户</el-button>
         <el-button link @click="logout">退出登录</el-button>
       </div>
     </el-header>
@@ -1045,6 +1046,11 @@ const goToStatistics = () => {
 
 const goToAdmin = () => {
   router.push('/admin')
+}
+
+// 返回门户
+const goToPortal = () => {
+  router.push('/portal')
 }
 
 // 退出登录

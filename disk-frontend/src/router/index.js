@@ -6,6 +6,7 @@ import Portal from '../views/Portal.vue'
 import Disk from '../views/Disk.vue'
 import Admin from '../views/Admin.vue'
 import Statistics from '../views/Statistics.vue'
+import Games from '../views/Games.vue'
 
 const routes = [
   {
@@ -42,6 +43,12 @@ const routes = [
     path: '/statistics',
     name: 'Statistics',
     component: Statistics,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/games',
+    name: 'Games',
+    component: Games,
     meta: { requiresAuth: true }
   },
   {
