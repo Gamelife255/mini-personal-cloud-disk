@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.disk.mapper.ReplyMapper">
+
+    <resultMap id="ReplyWithAuthorMap" type="java.util.HashMap">
+        <result property="id" column="id" javaType="java.lang.Long"/>
+        <result property="topicId" column="topic_id" javaType="java.lang.Long"/>
+        <result property="userId" column="user_id" javaType="java.lang.Long"/>
+        <result property="authorName" column="author_name" javaType="java.lang.String"/>
+        <result property="content" column="content" javaType="java.lang.String"/>
+        <result property="status" column="status" javaType="java.lang.Integer"/>
+        <result property="createdAt" column="created_at" javaType="java.lang.Long"/>
+        <result property="updatedAt" column="updated_at" javaType="java.lang.Long"/>
+    </resultMap>
+
+    <select id="findByTopicId" resultMap="ReplyWithAuthorMap">
+        SELECT r.*, u.username AS author_name
+        FROM forum_replies r
+        LEFT JOIN users u ON r.user_id = u.id
+        WHERE r.topic_id = #{topicId} AND r.status = 1
+        ORDER BY r.created_at ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="findById" resultMap="ReplyWithAuthorMap">
+        SELECT r.*, u.username AS author_name
+        FROM forum_replies r
+        LEFT JOIN users u ON r.user_id = u.id
+        WHERE r.id = #{id}
+    </select>
+
+    <select id="countByTopicId" resultType="int">
+        SELECT COUNT(*) FROM forum_replies WHERE topic_id = #{topicId} AND status = 1
+    </select>
+
+    <insert id="insert" parameterType="com.disk.entity.Reply" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO forum_replies (topic_id, user_id, content, status, created_at, updated_at)
+        VALUES (#{topicId}, #{userId}, #{content}, 1, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="softDelete">
+        UPDATE forum_replies SET status = 0 WHERE id = #{id}
+    </update>
+
+</mapper>

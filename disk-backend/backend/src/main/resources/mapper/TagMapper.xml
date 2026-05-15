@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.disk.mapper.TagMapper">
+
+    <resultMap id="TagResultMap" type="com.disk.entity.Tag">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="TagResultMap">
+        SELECT * FROM forum_tags ORDER BY id ASC
+    </select>
+
+    <select id="findById" resultMap="TagResultMap">
+        SELECT * FROM forum_tags WHERE id = #{id}
+    </select>
+
+    <select id="findByName" resultMap="TagResultMap">
+        SELECT * FROM forum_tags WHERE name = #{name}
+    </select>
+
+    <insert id="insert" parameterType="com.disk.entity.Tag" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO forum_tags (name, created_at) VALUES (#{name}, #{createdAt})
+    </insert>
+
+    <select id="findByTopicId" resultMap="TagResultMap">
+        SELECT t.* FROM forum_tags t
+        INNER JOIN forum_topic_tags tt ON t.id = tt.tag_id
+        WHERE tt.topic_id = #{topicId}
+    </select>
+
+</mapper>

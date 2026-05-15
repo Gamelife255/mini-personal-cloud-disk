@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.disk.mapper.TopicMapper">
+
+    <resultMap id="TopicWithAuthorMap" type="java.util.HashMap">
+        <result property="id" column="id" javaType="java.lang.Long"/>
+        <result property="title" column="title" javaType="java.lang.String"/>
+        <result property="content" column="content" javaType="java.lang.String"/>
+        <result property="categoryId" column="category_id" javaType="java.lang.Long"/>
+        <result property="categoryName" column="category_name" javaType="java.lang.String"/>
+        <result property="userId" column="user_id" javaType="java.lang.Long"/>
+        <result property="authorName" column="author_name" javaType="java.lang.String"/>
+        <result property="viewCount" column="view_count" javaType="java.lang.Integer"/>
+        <result property="replyCount" column="reply_count" javaType="java.lang.Integer"/>
+        <result property="likeCount" column="like_count" javaType="java.lang.Integer"/>
+        <result property="status" column="status" javaType="java.lang.Integer"/>
+        <result property="lastReplyAt" column="last_reply_at" javaType="java.lang.Long"/>
+        <result property="lastReplyByName" column="last_reply_by_name" javaType="java.lang.String"/>
+        <result property="createdAt" column="created_at" javaType="java.lang.Long"/>
+        <result property="updatedAt" column="updated_at" javaType="java.lang.Long"/>
+    </resultMap>
+
+    <select id="findByCategoryId" resultMap="TopicWithAuthorMap">
+        SELECT t.*, u.username AS author_name, c.name AS category_name,
+               lr.username AS last_reply_by_name
+        FROM forum_topics t
+        LEFT JOIN users u ON t.user_id = u.id
+        LEFT JOIN forum_categories c ON t.category_id = c.id
+        LEFT JOIN users lr ON t.last_reply_by = lr.id
+        WHERE t.status = 1
+        <if test="categoryId != null and categoryId != 0">
+            AND t.category_id = #{categoryId}
+        </if>
+        <choose>
+            <when test="sortBy == 'popular'">
+                ORDER BY t.reply_count DESC, t.created_at DESC
+            </when>
+            <when test="sortBy == 'hot'">
+                ORDER BY t.view_count DESC, t.created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY t.created_at DESC
+            </otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByCategoryId" resultType="int">
+        SELECT COUNT(*) FROM forum_topics WHERE status = 1
+        <if test="categoryId != null and categoryId != 0">
+            AND category_id = #{categoryId}
+        </if>
+    </select>
+
+    <select id="findByUserId" resultMap="TopicWithAuthorMap">
+        SELECT t.*, u.username AS author_name, c.name AS category_name,
+               lr.username AS last_reply_by_name
+        FROM forum_topics t
+        LEFT JOIN users u ON t.user_id = u.id
+        LEFT JOIN forum_categories c ON t.category_id = c.id
+        LEFT JOIN users lr ON t.last_reply_by = lr.id
+        WHERE t.user_id = #{userId} AND t.status = 1
+        ORDER BY t.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*) FROM forum_topics WHERE user_id = #{userId} AND status = 1
+    </select>
+
+    <select id="findByIdWithAuthor" resultMap="TopicWithAuthorMap">
+        SELECT t.*, u.username AS author_name, c.name AS category_name,
+               lr.username AS last_reply_by_name
+        FROM forum_topics t
+        LEFT JOIN users u ON t.user_id = u.id
+        LEFT JOIN forum_categories c ON t.category_id = c.id
+        LEFT JOIN users lr ON t.last_reply_by = lr.id
+        WHERE t.id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.disk.entity.Topic" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO forum_topics (title, content, category_id, user_id,
+            view_count, reply_count, like_count, status, created_at, updated_at)
+        VALUES (#{title}, #{content}, #{categoryId}, #{userId},
+            0, 0, 0, 1, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.disk.entity.Topic">
+        UPDATE forum_topics
+        SET title = #{title}, content = #{content}, category_id = #{categoryId},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <update id="incrementViewCount">
+        UPDATE forum_topics SET view_count = view_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="updateReplyInfo">
+        UPDATE forum_topics
+        SET reply_count = reply_count + 1, last_reply_at = #{lastReplyAt}, last_reply_by = #{lastReplyBy}
+        WHERE id = #{id}
+    </update>
+
+    <update id="incrementLikeCount">
+        UPDATE forum_topics SET like_count = like_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="decrementLikeCount">
+        UPDATE forum_topics SET like_count = like_count - 1 WHERE id = #{id}
+    </update>
+
+    <update id="softDelete">
+        UPDATE forum_topics SET status = 0 WHERE id = #{id}
+    </update>
+
+</mapper>

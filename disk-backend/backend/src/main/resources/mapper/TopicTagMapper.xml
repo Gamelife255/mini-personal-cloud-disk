@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.disk.mapper.TopicTagMapper">
+
+    <insert id="insert" parameterType="com.disk.entity.TopicTag" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO forum_topic_tags (topic_id, tag_id) VALUES (#{topicId}, #{tagId})
+    </insert>
+
+    <delete id="deleteByTopicId">
+        DELETE FROM forum_topic_tags WHERE topic_id = #{topicId}
+    </delete>
+
+    <select id="findTagIdsByTopicId" resultType="java.lang.Long">
+        SELECT tag_id FROM forum_topic_tags WHERE topic_id = #{topicId}
+    </select>
+
+    <select id="findByTagId" resultType="com.disk.entity.TopicTag">
+        SELECT * FROM forum_topic_tags WHERE tag_id = #{tagId}
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+</mapper>

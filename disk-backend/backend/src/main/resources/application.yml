@@ -6,7 +6,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/cloud_disk?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowMultiQueries=true
     username: root
-    password: MyNewPassw0rd@2023
+    password: 123456 # MyNewPassw0rd@2023 1
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # 邮件配置
@@ -45,7 +45,7 @@ spring:
 # Linux:   /opt/cloud-disk/upload/
 disk:
   upload:
-    path: /opt/cloud-disk/upload/
+    path: E:/disk/upload/ 
 
 
 # MyBatis-Plus 配置

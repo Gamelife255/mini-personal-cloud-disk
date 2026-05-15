@@ -7,6 +7,10 @@ import Disk from '../views/Disk.vue'
 import Admin from '../views/Admin.vue'
 import Statistics from '../views/Statistics.vue'
 import Games from '../views/Games.vue'
+import Forum from '../views/Forum.vue'
+import ForumTopic from '../views/ForumTopic.vue'
+import ForumCreate from '../views/ForumCreate.vue'
+import ForumUser from '../views/ForumUser.vue'
 
 const routes = [
   {
@@ -56,6 +60,33 @@ const routes = [
     name: 'Admin',
     component: Admin,
     meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/forum',
+    name: 'Forum',
+    component: Forum
+  },
+  {
+    path: '/forum/topic/:id',
+    name: 'ForumTopic',
+    component: ForumTopic
+  },
+  {
+    path: '/forum/create',
+    name: 'ForumCreate',
+    component: ForumCreate,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/forum/edit/:id',
+    name: 'ForumEdit',
+    component: ForumCreate,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/forum/user/:id',
+    name: 'ForumUser',
+    component: ForumUser
   },
   {
     path: '/',

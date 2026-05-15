@@ -32,10 +32,13 @@
         </el-tab-pane>
 
         <el-tab-pane label="论坛" name="forum">
-          <div class="tab-content placeholder">
+          <div class="tab-content">
             <div class="tab-icon">💬</div>
             <h3>论坛</h3>
-            <p>敬请期待</p>
+            <p>技术交流、资源分享、问题求助</p>
+            <el-button type="primary" class="enter-btn" @click="goToForum">
+              进入论坛
+            </el-button>
           </div>
         </el-tab-pane>
 
@@ -81,6 +84,10 @@ const userInitial = computed(() => (username.value || 'U')[0].toUpperCase())
 
 const goToDisk = () => {
   router.push('/disk')
+}
+
+const goToForum = () => {
+  router.push('/forum')
 }
 
 const goToGames = () => {

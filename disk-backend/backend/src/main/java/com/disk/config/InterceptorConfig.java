@@ -19,7 +19,8 @@ public class InterceptorConfig implements WebMvcConfigurer {
                     "/api/user/register",
                     "/api/user/send-verify-code",
                     "/api/user/send-reset-code",
-                    "/api/user/reset-password"
+                    "/api/user/reset-password",
+                "/api/forum/**"
                 );
     }
 }
