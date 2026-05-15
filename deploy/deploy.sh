@@ -21,6 +21,22 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+# ---- 参数解析 ----
+SKIP_FRONTEND_BUILD=false
+for arg in "$@"; do
+    case "$arg" in
+        --skip-frontend-build) SKIP_FRONTEND_BUILD=true ;;
+        -h|--help)
+            echo "用法: bash deploy.sh [选项]"
+            echo ""
+            echo "选项:"
+            echo "  --skip-frontend-build  跳过前端构建，使用已上传的 dist 文件"
+            echo "  -h, --help             显示此帮助信息"
+            exit 0
+            ;;
+    esac
+done
+
 info()  { echo -e "  ${GREEN}[✓]${NC} $1"; }
 warn()  { echo -e "  ${YELLOW}[!]${NC} $1"; }
 error() { echo -e "\n${RED}═══ 部署失败 ═══${NC}\n  ${RED}[✗]${NC} $1\n"; exit 1; }
@@ -195,16 +211,37 @@ fi
 # ============================================
 step "5" "部署前端项目"
 
-cd "$PROJECT_DIR/disk-frontend"
+if [ "$SKIP_FRONTEND_BUILD" = true ]; then
+    # ---- 使用本地预构建的前端包 ----
+    PREBUILT_DIST=""
 
-# 清理旧构建产物，确保每次部署都是服务器本地构建
-if [ -d "dist" ]; then
-    warn "检测到已有前端构建产物，正在清理..."
-    rm -rf dist node_modules/.vite 2>/dev/null || true
-fi
+    # 优先检查通过 build-local.sh 上传的目录
+    if [ -d "$PROJECT_DIR/frontend-upload/dist" ]; then
+        PREBUILT_DIST="$PROJECT_DIR/frontend-upload/dist"
+        info "发现预构建前端: frontend-upload/dist/"
+    elif [ -d "$PROJECT_DIR/disk-frontend/dist" ]; then
+        PREBUILT_DIST="$PROJECT_DIR/disk-frontend/dist"
+        info "使用已存在的 disk-frontend/dist/"
+    else
+        error "未找到预构建的前端文件！请先在本地运行 bash deploy/build-local.sh <服务器IP>"
+    fi
 
-echo "  正在安装前端依赖..."
-npm install
+    if [ ! -f "$PREBUILT_DIST/index.html" ]; then
+        error "预构建前端不完整 (缺少 index.html)，请重新在本地构建"
+    fi
+else
+    # ---- 服务器本地构建前端 ----
+    cd "$PROJECT_DIR/disk-frontend"
+
+    # 清理旧构建产物
+    if [ -d "dist" ]; then
+        warn "检测到已有前端构建产物，正在清理..."
+        rm -rf dist node_modules/.vite 2>/dev/null || true
+    fi
+
+    warn "服务器性能有限，前端构建可能较慢..."
+    echo "  正在安装前端依赖..."
+    npm install
 
     echo "  正在构建前端项目..."
     chmod +x node_modules/.bin/* 2>/dev/null || true
@@ -214,11 +251,13 @@ npm install
         error "前端构建失败: 未生成 dist/index.html"
     fi
     info "前端构建完成"
+
+    PREBUILT_DIST="$PROJECT_DIR/disk-frontend/dist"
 fi
 
 echo "  正在部署前端文件到 Nginx 目录..."
 sudo rm -rf "$FRONTEND_DIR"/*
-sudo cp -r dist/* "$FRONTEND_DIR/"
+sudo cp -r "$PREBUILT_DIST"/* "$FRONTEND_DIR/"
 info "前端部署完成 → $FRONTEND_DIR"
 
 # ============================================
