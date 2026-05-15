@@ -26,4 +26,19 @@ public interface ForumService {
     boolean hasLiked(Long topicId, Long userId);
 
     Map<String, Object> listUserTopics(Long userId, int page, int size);
+
+    // Follow
+    Map<String, Object> toggleFollow(Long followerId, Long followingId);
+    boolean isFollowing(Long followerId, Long followingId);
+    int countFollowers(Long userId);
+    int countFollowing(Long userId);
+    Map<String, Object> listFollowers(Long userId, int page, int size);
+    Map<String, Object> listFollowing(Long userId, int page, int size);
+
+    // Favorites (liked posts)
+    Map<String, Object> listLikedTopics(Long userId, int page, int size);
+
+    // Browsing history
+    void recordBrowsing(Long userId, Long topicId);
+    Map<String, Object> listBrowsingHistory(Long userId, int page, int size);
 }

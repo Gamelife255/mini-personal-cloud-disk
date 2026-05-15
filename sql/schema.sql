@@ -125,6 +125,32 @@ CREATE TABLE IF NOT EXISTS forum_likes (
     FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- --------------------------------------------
+-- 用户关注表
+-- --------------------------------------------
+CREATE TABLE IF NOT EXISTS user_follows (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    follower_id  BIGINT NOT NULL  COMMENT '关注者ID',
+    following_id BIGINT NOT NULL  COMMENT '被关注者ID',
+    created_at   BIGINT,
+    UNIQUE KEY uk_follow (follower_id, following_id),
+    FOREIGN KEY (follower_id) REFERENCES users(id),
+    FOREIGN KEY (following_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------
+-- 浏览历史表
+-- --------------------------------------------
+CREATE TABLE IF NOT EXISTS browsing_history (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT NOT NULL,
+    topic_id   BIGINT NOT NULL,
+    created_at BIGINT,
+    INDEX idx_user_time (user_id, created_at),
+    FOREIGN KEY (topic_id) REFERENCES forum_topics(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 初始分类数据
 INSERT IGNORE INTO forum_categories (name, description, sort_order, created_at, updated_at) VALUES
 ('综合讨论', '各类话题自由讨论', 1, UNIX_TIMESTAMP()*1000, UNIX_TIMESTAMP()*1000),

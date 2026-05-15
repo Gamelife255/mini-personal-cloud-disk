@@ -12,6 +12,19 @@
       </div>
       <div class="header-right">
         <span class="user-name">{{ username }}</span>
+        <el-dropdown v-if="isLoggedIn" trigger="click" @command="handleCommand">
+          <el-button link class="user-menu-btn">
+            <el-icon :size="20"><Avatar /></el-icon>
+            <el-icon><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="profile">我的主页</el-dropdown-item>
+              <el-dropdown-item command="favorites">我的收藏</el-dropdown-item>
+              <el-dropdown-item command="history">浏览历史</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <el-button link @click="toggleTheme">
           <el-icon :size="18"><Sunny v-if="isDark" /><Moon v-else /></el-icon>
         </el-button>
@@ -23,7 +36,7 @@
         <div class="topic-header-info">
           <h2>{{ topic.title }}</h2>
           <div class="topic-info-row">
-            <span class="info-item">作者: {{ topic.authorName }}</span>
+            <span class="info-item"><a class="author-link" @click="goToUser(topic.userId)">作者: {{ topic.authorName }}</a></span>
             <span class="info-item">发布于 {{ formatTime(topic.createdAt) }}</span>
             <el-tag v-if="topic.categoryName" size="small" type="info">{{ topic.categoryName }}</el-tag>
             <el-tag v-for="tag in (topic.tags || [])" :key="tag.id" size="small">{{ tag.name }}</el-tag>
@@ -67,7 +80,7 @@
         </div>
         <div v-for="reply in replies" :key="reply.id" class="reply-card">
           <div class="reply-header">
-            <span class="reply-author">{{ reply.authorName }}</span>
+            <span class="reply-author" @click="goToUser(reply.userId)">{{ reply.authorName }}</span>
             <span class="reply-time">{{ formatTime(reply.createdAt) }}</span>
             <span class="reply-floor">#{{ replyIndex(reply) }}</span>
           </div>
@@ -116,7 +129,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDarkMode } from '../composables/useDarkMode'
 import { useBackground } from '../composables/useBackground'
-import { ArrowLeft, Sunny, Moon, Star, StarFilled, View, ChatDotRound } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowDown, Sunny, Moon, Star, StarFilled, View, ChatDotRound, Avatar } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTopic, getReplies, createReply, deleteReply, deleteTopic, toggleLike } from '../api/forum'
 
@@ -187,7 +200,7 @@ const onToggleLike = async () => {
     const res = await toggleLike(topic.value.id)
     if (res.code === 200) {
       isLiked.value = res.data.liked
-      topic.value.likeCount = res.data.liked ? (topic.value.likeCount || 0) + 1 : Math.max(0, (topic.value.likeCount || 0) - 1)
+      topic.value.likeCount = res.data.likeCount
     }
   } catch {}
 }
@@ -237,7 +250,18 @@ const onDeleteTopic = async () => {
 }
 
 const goToEdit = () => router.push(`/forum/edit/${topic.value.id}`)
+const goToUser = (id) => id && router.push(`/forum/user/${id}`)
 const goBack = () => router.push('/forum')
+
+const handleCommand = (cmd) => {
+  if (cmd === 'profile') {
+    router.push(`/forum/user/${user.value.id}`)
+  } else if (cmd === 'favorites') {
+    router.push('/forum/favorites')
+  } else if (cmd === 'history') {
+    router.push('/forum/history')
+  }
+}
 
 const formatTime = (ts) => {
   if (!ts) return ''
@@ -278,8 +302,9 @@ onMounted(() => {
 
 .header-left { display: flex; align-items: center; gap: 12px; }
 .header-left .title { font-size: 18px; font-weight: 600; max-width: 500px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.header-right { display: flex; align-items: center; gap: 12px; }
+.header-right { display: flex; align-items: center; gap: 8px; }
 .user-name { color: #606266; font-size: 14px; }
+.user-menu-btn { color: #606266; font-size: 20px; }
 .back-btn { color: #606266; }
 
 .topic-main {
@@ -312,6 +337,9 @@ onMounted(() => {
   color: #909399;
   margin-bottom: 16px;
 }
+
+.author-link { color: #667eea; cursor: pointer; text-decoration: none; }
+.author-link:hover { text-decoration: underline; }
 
 .topic-content {
   font-size: 15px;
@@ -362,7 +390,8 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 
-.reply-author { font-weight: 500; color: #303133; font-size: 14px; }
+.reply-author { font-weight: 500; color: #667eea; font-size: 14px; cursor: pointer; }
+.reply-author:hover { text-decoration: underline; }
 .reply-time { font-size: 12px; color: #909399; }
 .reply-floor { font-size: 12px; color: #c0c4cc; margin-left: auto; }
 

@@ -11,6 +11,9 @@ import Forum from '../views/Forum.vue'
 import ForumTopic from '../views/ForumTopic.vue'
 import ForumCreate from '../views/ForumCreate.vue'
 import ForumUser from '../views/ForumUser.vue'
+import ForumFavorites from '../views/ForumFavorites.vue'
+import ForumHistory from '../views/ForumHistory.vue'
+import ForumFollows from '../views/ForumFollows.vue'
 
 const routes = [
   {
@@ -87,6 +90,24 @@ const routes = [
     path: '/forum/user/:id',
     name: 'ForumUser',
     component: ForumUser
+  },
+  {
+    path: '/forum/user/:id/follows',
+    name: 'ForumFollows',
+    component: ForumFollows,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/forum/favorites',
+    name: 'ForumFavorites',
+    component: ForumFavorites,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/forum/history',
+    name: 'ForumHistory',
+    component: ForumHistory,
+    meta: { requiresAuth: true }
   },
   {
     path: '/',

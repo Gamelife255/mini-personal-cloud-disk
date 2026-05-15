@@ -4,14 +4,11 @@ export function uploadFile(file, parentId) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('parentId', parentId)
-  
+
   return request({
     url: '/api/file/upload',
     method: 'post',
-    data: formData,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+    data: formData
   })
 }
 

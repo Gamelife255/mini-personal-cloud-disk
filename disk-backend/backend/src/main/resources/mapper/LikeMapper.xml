@@ -18,4 +18,23 @@
         SELECT COUNT(*) FROM forum_likes WHERE topic_id = #{topicId}
     </select>
 
+    <select id="findByUserId" resultType="java.util.HashMap">
+        SELECT fl.id, fl.created_at AS likedAt,
+               t.id AS topicId, t.title, t.view_count AS viewCount, t.reply_count AS replyCount,
+               t.like_count AS likeCount, t.created_at AS topicCreatedAt,
+               u.username AS authorName,
+               c.name AS categoryName
+        FROM forum_likes fl
+        JOIN forum_topics t ON fl.topic_id = t.id AND t.status = 1
+        JOIN users u ON t.user_id = u.id
+        LEFT JOIN forum_categories c ON t.category_id = c.id
+        WHERE fl.user_id = #{userId}
+        ORDER BY fl.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*) FROM forum_likes WHERE user_id = #{userId}
+    </select>
+
 </mapper>

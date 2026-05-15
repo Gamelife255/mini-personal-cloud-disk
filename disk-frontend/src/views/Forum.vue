@@ -12,6 +12,19 @@
       </div>
       <div class="header-right">
         <span class="user-name">{{ username }}</span>
+        <el-dropdown v-if="isLoggedIn" trigger="click" @command="handleCommand">
+          <el-button link class="user-menu-btn">
+            <el-icon :size="20"><Avatar /></el-icon>
+            <el-icon><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="profile">我的主页</el-dropdown-item>
+              <el-dropdown-item command="favorites">我的收藏</el-dropdown-item>
+              <el-dropdown-item command="history">浏览历史</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <el-button link @click="toggleTheme">
           <el-icon :size="18"><Sunny v-if="isDark" /><Moon v-else /></el-icon>
         </el-button>
@@ -52,7 +65,7 @@
             <div class="topic-main">
               <div class="topic-title">{{ topic.title }}</div>
               <div class="topic-meta">
-                <span class="topic-author">{{ topic.authorName }}</span>
+                <span class="topic-author" @click.stop="goToUser(topic.userId)">{{ topic.authorName }}</span>
                 <span class="topic-time">{{ formatTime(topic.createdAt) }}</span>
                 <el-tag v-if="topic.categoryName" size="small" type="info">{{ topic.categoryName }}</el-tag>
                 <el-tag v-for="tag in (topic.tags || [])" :key="tag.id" size="small" class="tag-item">
@@ -98,7 +111,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDarkMode } from '../composables/useDarkMode'
 import { useBackground } from '../composables/useBackground'
-import { ArrowLeft, Sunny, Moon, Grid, Folder, Edit, ChatDotRound, View, Star } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowDown, Sunny, Moon, Grid, Folder, Edit, ChatDotRound, View, Star, Avatar } from '@element-plus/icons-vue'
 import { getCategories, getTopics } from '../api/forum'
 
 const { isDark, toggle: toggleTheme } = useDarkMode()
@@ -155,6 +168,17 @@ const onCategorySelect = (index) => {
 const goToTopic = (id) => router.push(`/forum/topic/${id}`)
 const goToCreate = () => router.push('/forum/create')
 const goToPortal = () => router.push('/portal')
+const goToUser = (id) => id && router.push(`/forum/user/${id}`)
+
+const handleCommand = (cmd) => {
+  if (cmd === 'profile') {
+    router.push(`/forum/user/${user.value.id}`)
+  } else if (cmd === 'favorites') {
+    router.push('/forum/favorites')
+  } else if (cmd === 'history') {
+    router.push('/forum/history')
+  }
+}
 
 const formatTime = (ts) => {
   if (!ts) return ''
@@ -195,8 +219,9 @@ onMounted(() => {
 
 .header-left { display: flex; align-items: center; gap: 12px; }
 .header-left .title { font-size: 18px; font-weight: 600; }
-.header-right { display: flex; align-items: center; gap: 12px; }
+.header-right { display: flex; align-items: center; gap: 8px; }
 .user-name { color: #606266; font-size: 14px; }
+.user-menu-btn { color: #606266; font-size: 20px; }
 .back-btn { color: #606266; }
 
 .forum-main {
@@ -257,6 +282,8 @@ onMounted(() => {
 .topic-main { flex: 1; min-width: 0; }
 .topic-title { font-size: 16px; font-weight: 500; margin-bottom: 6px; color: #303133; }
 .topic-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: #909399; }
+.topic-author { cursor: pointer; color: #667eea; }
+.topic-author:hover { text-decoration: underline; }
 
 .topic-stats { display: flex; gap: 14px; flex-shrink: 0; }
 .stat-item { display: flex; align-items: center; gap: 3px; font-size: 13px; color: #909399; }

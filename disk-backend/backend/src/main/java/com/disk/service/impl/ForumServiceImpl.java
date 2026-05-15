@@ -29,6 +29,12 @@ public class ForumServiceImpl implements ForumService {
     @Autowired
     private LikeMapper likeMapper;
 
+    @Autowired
+    private FollowMapper followMapper;
+
+    @Autowired
+    private BrowsingHistoryMapper browsingHistoryMapper;
+
     @Override
     public List<Category> listCategories() {
         return categoryMapper.findAll();
@@ -222,6 +228,8 @@ public class ForumServiceImpl implements ForumService {
             topicMapper.incrementLikeCount(topicId);
             result.put("liked", true);
         }
+        // Return actual count from DB to avoid frontend count drift
+        result.put("likeCount", likeMapper.countByTopicId(topicId));
         return result;
     }
 
@@ -244,6 +252,111 @@ public class ForumServiceImpl implements ForumService {
 
         Map<String, Object> result = new HashMap<>();
         result.put("items", topics);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        return result;
+    }
+
+    // ---- Follow ----
+
+    @Override
+    public Map<String, Object> toggleFollow(Long followerId, Long followingId) {
+        Map<String, Object> result = new HashMap<>();
+        if (followMapper.exists(followerId, followingId) > 0) {
+            followMapper.delete(followerId, followingId);
+            result.put("following", false);
+        } else {
+            Follow follow = new Follow();
+            follow.setFollowerId(followerId);
+            follow.setFollowingId(followingId);
+            follow.setCreatedAt(System.currentTimeMillis());
+            followMapper.insert(follow);
+            result.put("following", true);
+        }
+        return result;
+    }
+
+    @Override
+    public boolean isFollowing(Long followerId, Long followingId) {
+        return followMapper.exists(followerId, followingId) > 0;
+    }
+
+    @Override
+    public int countFollowers(Long userId) {
+        return followMapper.countFollowers(userId);
+    }
+
+    @Override
+    public int countFollowing(Long userId) {
+        return followMapper.countFollowing(userId);
+    }
+
+    @Override
+    public Map<String, Object> listFollowers(Long userId, int page, int size) {
+        int offset = (page - 1) * size;
+        List<Map<String, Object>> users = followMapper.findFollowers(userId, offset, size);
+        int total = followMapper.countFollowers(userId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("items", users);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> listFollowing(Long userId, int page, int size) {
+        int offset = (page - 1) * size;
+        List<Map<String, Object>> users = followMapper.findFollowing(userId, offset, size);
+        int total = followMapper.countFollowing(userId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("items", users);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        return result;
+    }
+
+    // ---- Favorites (liked topics) ----
+
+    @Override
+    public Map<String, Object> listLikedTopics(Long userId, int page, int size) {
+        int offset = (page - 1) * size;
+        List<Map<String, Object>> topics = likeMapper.findByUserId(userId, offset, size);
+        int total = likeMapper.countByUserId(userId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("items", topics);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        return result;
+    }
+
+    // ---- Browsing history ----
+
+    @Override
+    public void recordBrowsing(Long userId, Long topicId) {
+        // Delete old entry if exists, then insert new one (update timestamp)
+        browsingHistoryMapper.deleteByUserIdAndTopicId(userId, topicId);
+        BrowsingHistory history = new BrowsingHistory();
+        history.setUserId(userId);
+        history.setTopicId(topicId);
+        history.setCreatedAt(System.currentTimeMillis());
+        browsingHistoryMapper.insert(history);
+    }
+
+    @Override
+    public Map<String, Object> listBrowsingHistory(Long userId, int page, int size) {
+        int offset = (page - 1) * size;
+        List<Map<String, Object>> items = browsingHistoryMapper.findByUserId(userId, offset, size);
+        int total = browsingHistoryMapper.countByUserId(userId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("items", items);
         result.put("total", total);
         result.put("page", page);
         result.put("size", size);

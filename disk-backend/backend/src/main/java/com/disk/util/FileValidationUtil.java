@@ -268,13 +268,20 @@ public final class FileValidationUtil {
 
     public static Path resolveSafePath(String uploadRoot, String parentFolderPath,
                                         String newFileName) throws IOException {
-        Path root = Paths.get(uploadRoot).toRealPath();
+        Path root = Paths.get(uploadRoot).toAbsolutePath();
+        if (!Files.exists(root)) {
+            Files.createDirectories(root);
+        }
+        root = root.toRealPath();
         Path parent = root;
 
         if (parentFolderPath != null && !parentFolderPath.isEmpty()) {
-            Path candidate = Paths.get(parentFolderPath).toRealPath();
-            if (candidate.startsWith(root)) {
-                parent = candidate;
+            Path candidate = Paths.get(parentFolderPath).toAbsolutePath();
+            if (Files.exists(candidate)) {
+                candidate = candidate.toRealPath();
+                if (candidate.startsWith(root)) {
+                    parent = candidate;
+                }
             }
         }
 

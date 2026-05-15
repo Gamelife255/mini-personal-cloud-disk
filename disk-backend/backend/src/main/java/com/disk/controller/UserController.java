@@ -3,9 +3,13 @@ package com.disk.controller;
 import com.disk.entity.User;
 import com.disk.service.UserService;
 import com.disk.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,6 +18,11 @@ import java.util.Map;
 public class UserController {
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    private static final String BLACKLIST_PREFIX = "jwt_blacklist:";
 
     @PostMapping("/login")
     public Object login(@RequestBody User user) {
@@ -103,6 +112,28 @@ public class UserController {
             result.put("code", 500);
             result.put("message", e.getMessage());
         }
+        return result;
+    }
+
+    @PostMapping("/logout")
+    public Map<String, Object> logout(HttpServletRequest request) {
+        Map<String, Object> result = new HashMap<>();
+        String token = request.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+            try {
+                Date expiration = JwtUtil.getExpirationFromToken(token);
+                long ttl = expiration.getTime() - System.currentTimeMillis();
+                if (ttl > 0) {
+                    redisTemplate.opsForValue().set(
+                        BLACKLIST_PREFIX + token, "1", Duration.ofMillis(ttl));
+                }
+            } catch (Exception ignored) {
+                // token already invalid, no need to blacklist
+            }
+        }
+        result.put("code", 200);
+        result.put("message", "已退出登录");
         return result;
     }
 

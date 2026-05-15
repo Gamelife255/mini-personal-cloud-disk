@@ -37,7 +37,7 @@ import javax.imageio.ImageIO;
 @RequestMapping("/api/file")
 public class FileController {
     @Autowired
-    private FileService fileService;
+    private FileService fileService; 
 
     @Value("${disk.upload.path}")
     private String uploadPath;

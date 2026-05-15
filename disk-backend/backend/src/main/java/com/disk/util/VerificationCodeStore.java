@@ -1,49 +1,38 @@
 package com.disk.util;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.time.Duration;
 
 @Component
 public class VerificationCodeStore {
 
-    private static class CodeEntry {
-        String code;
-        long expireAt;
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
-        CodeEntry(String code, long expireAt) {
-            this.code = code;
-            this.expireAt = expireAt;
-        }
-    }
-
-    // key: email, value: code entry
-    private final Map<String, CodeEntry> store = new ConcurrentHashMap<>();
-
-    private static final long EXPIRE_MS = 15 * 60 * 1000; // 15 minutes
+    private static final String KEY_PREFIX = "verify_code:";
+    private static final Duration TTL = Duration.ofMinutes(15);
 
     public void save(String email, String code) {
-        store.put(email, new CodeEntry(code, System.currentTimeMillis() + EXPIRE_MS));
+        redisTemplate.opsForValue().set(KEY_PREFIX + email, code, TTL);
     }
 
     public boolean verify(String email, String code) {
-        CodeEntry entry = store.get(email);
-        if (entry == null) {
+        String key = KEY_PREFIX + email;
+        String storedCode = redisTemplate.opsForValue().get(key);
+        if (storedCode == null) {
             return false;
         }
-        if (System.currentTimeMillis() > entry.expireAt) {
-            store.remove(email);
+        if (!storedCode.equals(code)) {
             return false;
         }
-        if (!entry.code.equals(code)) {
-            return false;
-        }
-        store.remove(email); // one-time use
+        redisTemplate.delete(key); // one-time use
         return true;
     }
 
     public void remove(String email) {
-        store.remove(email);
+        redisTemplate.delete(KEY_PREFIX + email);
     }
 }

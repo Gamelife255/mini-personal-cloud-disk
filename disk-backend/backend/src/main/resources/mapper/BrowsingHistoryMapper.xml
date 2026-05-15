@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.disk.mapper.BrowsingHistoryMapper">
+
+    <insert id="insert" parameterType="com.disk.entity.BrowsingHistory" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO browsing_history (user_id, topic_id, created_at)
+        VALUES (#{userId}, #{topicId}, #{createdAt})
+    </insert>
+
+    <select id="findByUserId" resultType="java.util.HashMap">
+        SELECT bh.id, bh.created_at AS viewedAt,
+               t.id AS topicId, t.title, t.view_count AS viewCount, t.reply_count AS replyCount,
+               t.like_count AS likeCount, t.created_at AS topicCreatedAt,
+               u.username AS authorName,
+               c.name AS categoryName
+        FROM browsing_history bh
+        JOIN forum_topics t ON bh.topic_id = t.id AND t.status = 1
+        JOIN users u ON t.user_id = u.id
+        LEFT JOIN forum_categories c ON t.category_id = c.id
+        WHERE bh.user_id = #{userId}
+        ORDER BY bh.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*) FROM browsing_history WHERE user_id = #{userId}
+    </select>
+
+    <delete id="deleteByUserIdAndTopicId">
+        DELETE FROM browsing_history WHERE user_id = #{userId} AND topic_id = #{topicId}
+    </delete>
+
+</mapper>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.disk.mapper.FollowMapper">
+
+    <insert id="insert" parameterType="com.disk.entity.Follow" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_follows (follower_id, following_id, created_at)
+        VALUES (#{followerId}, #{followingId}, #{createdAt})
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM user_follows WHERE follower_id = #{followerId} AND following_id = #{followingId}
+    </delete>
+
+    <select id="exists" resultType="int">
+        SELECT COUNT(*) FROM user_follows WHERE follower_id = #{followerId} AND following_id = #{followingId}
+    </select>
+
+    <select id="countFollowers" resultType="int">
+        SELECT COUNT(*) FROM user_follows WHERE following_id = #{userId}
+    </select>
+
+    <select id="countFollowing" resultType="int">
+        SELECT COUNT(*) FROM user_follows WHERE follower_id = #{userId}
+    </select>
+
+    <select id="findFollowers" resultType="java.util.HashMap">
+        SELECT u.id, u.username, uf.created_at AS followedAt
+        FROM user_follows uf
+        JOIN users u ON uf.follower_id = u.id
+        WHERE uf.following_id = #{userId}
+        ORDER BY uf.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="findFollowing" resultType="java.util.HashMap">
+        SELECT u.id, u.username, uf.created_at AS followedAt
+        FROM user_follows uf
+        JOIN users u ON uf.following_id = u.id
+        WHERE uf.follower_id = #{userId}
+        ORDER BY uf.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+</mapper>

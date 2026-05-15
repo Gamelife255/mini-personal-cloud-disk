@@ -21,9 +21,24 @@
       <div class="user-card">
         <div class="avatar">{{ initial }}</div>
         <h2>{{ profileName }}</h2>
+        <div class="user-stats">
+          <span class="stat-link" @click="goToFollows('following')">关注 {{ followingCount }}</span>
+          <span class="stat-link" @click="goToFollows('followers')">粉丝 {{ followersCount }}</span>
+          <span>主题 {{ total }}</span>
+        </div>
+        <div class="user-actions" v-if="!isSelf && isLoggedIn">
+          <el-button
+            :type="isFollowing ? 'default' : 'primary'"
+            size="small"
+            :loading="followLoading"
+            @click="onToggleFollow"
+          >
+            {{ isFollowing ? '已关注' : '关注' }}
+          </el-button>
+        </div>
       </div>
 
-      <h3 class="section-title">发布的主题 ({{ total }})</h3>
+      <h3 class="section-title">发布的主题</h3>
 
       <div class="topic-list">
         <div v-if="topics.length === 0 && !loading" class="empty-state">
@@ -65,7 +80,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useDarkMode } from '../composables/useDarkMode'
 import { useBackground } from '../composables/useBackground'
 import { ArrowLeft, Sunny, Moon, ChatDotRound, View, Star } from '@element-plus/icons-vue'
-import { getUserTopics } from '../api/forum'
+import { ElMessage } from 'element-plus'
+import { getUserTopics, getFollowStatus, toggleFollow } from '../api/forum'
 
 const { isDark, toggle: toggleTheme } = useDarkMode()
 const { containerBackground, isCustom, bgLayerStyle } = useBackground('forum')
@@ -80,7 +96,29 @@ const total = ref(0)
 const loading = ref(false)
 const profileName = ref('')
 
+const currentUser = computed(() => {
+  try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} }
+})
+const isLoggedIn = computed(() => !!localStorage.getItem('token'))
+const isSelf = computed(() => currentUser.value.id == userId.value)
+
+const isFollowing = ref(false)
+const followersCount = ref(0)
+const followingCount = ref(0)
+const followLoading = ref(false)
+
 const initial = computed(() => (profileName.value || 'U')[0].toUpperCase())
+
+const loadFollowStatus = async () => {
+  try {
+    const res = await getFollowStatus(userId.value)
+    if (res.code === 200) {
+      isFollowing.value = res.data.following
+      followersCount.value = res.data.followersCount || 0
+      followingCount.value = res.data.followingCount || 0
+    }
+  } catch {}
+}
 
 const loadTopics = async () => {
   loading.value = true
@@ -96,7 +134,20 @@ const loadTopics = async () => {
   } catch {} finally { loading.value = false }
 }
 
+const onToggleFollow = async () => {
+  followLoading.value = true
+  try {
+    const res = await toggleFollow(userId.value)
+    if (res.code === 200) {
+      isFollowing.value = res.data.following
+      followersCount.value += res.data.following ? 1 : -1
+      ElMessage.success(res.data.following ? '已关注' : '已取消关注')
+    }
+  } catch {} finally { followLoading.value = false }
+}
+
 const goToTopic = (id) => router.push(`/forum/topic/${id}`)
+const goToFollows = (tab) => router.push(`/forum/user/${userId.value}/follows?tab=${tab}`)
 const goBack = () => router.push('/forum')
 
 const formatTime = (ts) => {
@@ -111,7 +162,10 @@ const formatTime = (ts) => {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
 
-onMounted(loadTopics)
+onMounted(() => {
+  loadTopics()
+  loadFollowStatus()
+})
 </script>
 
 <style scoped>
@@ -169,6 +223,19 @@ onMounted(loadTopics)
 }
 
 .user-card h2 { margin: 0; font-size: 20px; color: #303133; }
+
+.user-stats {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #606266;
+}
+.stat-link { cursor: pointer; color: #667eea; font-weight: 500; }
+.stat-link:hover { text-decoration: underline; }
+
+.user-actions { margin-top: 16px; }
 
 .section-title { font-size: 16px; color: #303133; margin: 0 0 12px; }
 

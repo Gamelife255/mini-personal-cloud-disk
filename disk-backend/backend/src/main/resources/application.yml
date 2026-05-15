@@ -40,12 +40,27 @@ spring:
       #  总最大请求大小（多个文件）
       max-request-size: 1000MB
 
-# 自定义：网盘文件存储路径，需要手动创建目录，或者修改为其他路径
-# Windows: E:/disk/upload/
-# Linux:   /opt/cloud-disk/upload/
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+# 自定义：网盘文件存储路径，启动时自动创建
+# 默认使用当前目录下的 upload 文件夹，也可改为绝对路径如 E:/disk/upload/
 disk:
   upload:
-    path: E:/disk/upload/ 
+    path:  E:/disk/upload/
+    # ./upload/
 
 
 # MyBatis-Plus 配置

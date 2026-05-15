@@ -89,6 +89,11 @@ public class ForumController {
             boolean liked = userId != null && forumService.hasLiked(id, userId);
             topic.put("isLiked", liked);
 
+            // Record browsing history
+            if (userId != null) {
+                forumService.recordBrowsing(userId, id);
+            }
+
             result.put("code", 200);
             result.put("data", topic);
         } catch (Exception e) {
@@ -375,6 +380,139 @@ public class ForumController {
         } catch (Exception e) {
             result.put("code", 500);
             result.put("message", "获取用户主题失败: " + e.getMessage());
+        }
+        return result;
+    }
+
+    // ---- Follow ----
+
+    @PostMapping("/users/{userId}/follow")
+    public Map<String, Object> toggleFollow(@PathVariable Long userId, HttpServletRequest request) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Long followerId = getUserId(request);
+            if (followerId == null) {
+                result.put("code", 401);
+                result.put("message", "请先登录");
+                return result;
+            }
+            if (followerId.equals(userId)) {
+                result.put("code", 400);
+                result.put("message", "不能关注自己");
+                return result;
+            }
+            Map<String, Object> followResult = forumService.toggleFollow(followerId, userId);
+            result.put("code", 200);
+            result.put("data", followResult);
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", "操作失败: " + e.getMessage());
+        }
+        return result;
+    }
+
+    @GetMapping("/users/{userId}/follow-status")
+    public Map<String, Object> followStatus(@PathVariable Long userId, HttpServletRequest request) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Long currentUserId = getUserId(request);
+            if (currentUserId == null) {
+                result.put("code", 200);
+                result.put("data", Map.of("following", false));
+                return result;
+            }
+            boolean following = forumService.isFollowing(currentUserId, userId);
+            int followersCount = forumService.countFollowers(userId);
+            int followingCount = forumService.countFollowing(userId);
+            Map<String, Object> data = new HashMap<>();
+            data.put("following", following);
+            data.put("followersCount", followersCount);
+            data.put("followingCount", followingCount);
+            result.put("code", 200);
+            result.put("data", data);
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    @GetMapping("/users/{userId}/followers")
+    public Map<String, Object> listFollowers(@PathVariable Long userId,
+                                              @RequestParam(defaultValue = "1") int page,
+                                              @RequestParam(defaultValue = "15") int size) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Map<String, Object> data = forumService.listFollowers(userId, page, size);
+            result.put("code", 200);
+            result.put("data", data);
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    @GetMapping("/users/{userId}/following")
+    public Map<String, Object> listFollowing(@PathVariable Long userId,
+                                              @RequestParam(defaultValue = "1") int page,
+                                              @RequestParam(defaultValue = "15") int size) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Map<String, Object> data = forumService.listFollowing(userId, page, size);
+            result.put("code", 200);
+            result.put("data", data);
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    // ---- Favorites (liked posts) ----
+
+    @GetMapping("/favorites")
+    public Map<String, Object> listFavorites(@RequestParam(defaultValue = "1") int page,
+                                              @RequestParam(defaultValue = "15") int size,
+                                              HttpServletRequest request) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Long userId = getUserId(request);
+            if (userId == null) {
+                result.put("code", 401);
+                result.put("message", "请先登录");
+                return result;
+            }
+            Map<String, Object> data = forumService.listLikedTopics(userId, page, size);
+            result.put("code", 200);
+            result.put("data", data);
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", e.getMessage());
+        }
+        return result;
+    }
+
+    // ---- Browsing history ----
+
+    @GetMapping("/history")
+    public Map<String, Object> listHistory(@RequestParam(defaultValue = "1") int page,
+                                            @RequestParam(defaultValue = "15") int size,
+                                            HttpServletRequest request) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            Long userId = getUserId(request);
+            if (userId == null) {
+                result.put("code", 401);
+                result.put("message", "请先登录");
+                return result;
+            }
+            Map<String, Object> data = forumService.listBrowsingHistory(userId, page, size);
+            result.put("code", 200);
+            result.put("data", data);
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", e.getMessage());
         }
         return result;
     }

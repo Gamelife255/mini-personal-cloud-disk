@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(mvn clean *)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npx vite *)",
+      "Bash(mvn compile *)"
     ]
   }
 }

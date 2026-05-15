@@ -53,3 +53,30 @@ export function getTags() {
 export function getUserTopics(userId, params) {
   return request({ url: `/api/forum/users/${userId}/topics`, method: 'get', params })
 }
+
+// Follow
+export function toggleFollow(userId) {
+  return request({ url: `/api/forum/users/${userId}/follow`, method: 'post' })
+}
+
+export function getFollowStatus(userId) {
+  return request({ url: `/api/forum/users/${userId}/follow-status`, method: 'get' })
+}
+
+export function getFollowers(userId, params) {
+  return request({ url: `/api/forum/users/${userId}/followers`, method: 'get', params })
+}
+
+export function getFollowing(userId, params) {
+  return request({ url: `/api/forum/users/${userId}/following`, method: 'get', params })
+}
+
+// Favorites (liked posts)
+export function getFavorites(params) {
+  return request({ url: '/api/forum/favorites', method: 'get', params })
+}
+
+// Browsing history
+export function getHistory(params) {
+  return request({ url: '/api/forum/history', method: 'get', params })
+}
