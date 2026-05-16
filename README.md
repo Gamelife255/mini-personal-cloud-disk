@@ -308,6 +308,69 @@ VITE_API_URL=http://localhost:8080
 
 MIT License
 
+## 🤝 贡献指南
+
+欢迎贡献代码！请遵循以下步骤：
+
+1. **Fork 项目**
+2. **创建功能分支**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+3. **提交更改**
+   ```bash
+   git commit -m "Add: your feature description"
+   ```
+4. **推送到分支**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+5. **创建 Pull Request**
+
+### 代码规范
+
+- **后端**：遵循 Java 编码规范，使用 Lombok 简化代码
+- **前端**：使用 Vue 3 Composition API，遵循 ESLint 规则
+- **提交信息**：使用语义化提交格式（Add、Fix、Update、Refactor、Docs）
+
+## 💡 使用技巧
+
+### 1. 快速启动开发环境
+
+```bash
+# 方式一：使用一键启动脚本（Windows）
+script/start.bat
+
+# 方式二：手动启动
+# 后端
+cd disk-backend/backend
+mvn spring-boot:run
+
+# 前端
+cd disk-frontend
+npm run dev
+```
+
+### 2. 构建生产版本
+
+```bash
+# 前端构建
+cd disk-frontend
+npm run build
+
+# 后端打包
+cd disk-backend/backend
+mvn clean package -DskipTests
+```
+
+### 3. 部署到服务器
+
+```bash
+# 在服务器上执行
+bash deploy/setup-env.sh  # 仅首次部署时执行
+bash deploy/deploy.sh      # 每次更新代码后执行
+```
+
 ## 📧 联系方式
 
 如有问题或建议，欢迎提交 Issue 或 Pull Request！
@@ -315,5 +378,8 @@ MIT License
 ---
 
 ⭐ 如果这个项目对你有帮助，请给个 Star 支持一下！
-## Star History
+
+## 📊 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=你的用户名/mini-personal-cloud-disk&type=Date)](https://star-history.com/#你的用户名/mini-personal-cloud-disk&Date)
 

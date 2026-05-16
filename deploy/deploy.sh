@@ -23,14 +23,22 @@ NC='\033[0m'
 
 # ---- 参数解析 ----
 SKIP_FRONTEND_BUILD=false
+SKIP_BACKEND_BUILD=false
 for arg in "$@"; do
     case "$arg" in
         --skip-frontend-build) SKIP_FRONTEND_BUILD=true ;;
+        --skip-backend-build)  SKIP_BACKEND_BUILD=true ;;
+        --use-local-build)
+            SKIP_FRONTEND_BUILD=true
+            SKIP_BACKEND_BUILD=true
+            ;;
         -h|--help)
             echo "用法: bash deploy.sh [选项]"
             echo ""
             echo "选项:"
             echo "  --skip-frontend-build  跳过前端构建，使用已上传的 dist 文件"
+            echo "  --skip-backend-build   跳过后端构建，使用已上传的 backend.jar"
+            echo "  --use-local-build      跳过全部构建，等同同时使用上面两个选项"
             echo "  -h, --help             显示此帮助信息"
             exit 0
             ;;
@@ -183,27 +191,53 @@ info "上传目录: $UPLOAD_DIR"
 # ============================================
 step "4" "构建后端项目"
 
-cd "$PROJECT_DIR/disk-backend/backend"
+if [ "$SKIP_BACKEND_BUILD" = true ]; then
+    # ---- 使用本地预构建的后端 JAR ----
+    PREBUILT_JAR=""
 
-# 修正 Windows 上传路径为 Linux 路径
-if grep -q "E:/disk/upload/" src/main/resources/application.yml 2>/dev/null; then
-    sed -i 's|E:/disk/upload/|/opt/cloud-disk/upload/|g' src/main/resources/application.yml
-    info "已自动将上传路径从 Windows 格式修正为 /opt/cloud-disk/upload/"
-fi
-
-echo "  正在编译后端项目 (Maven)..."
-echo "  首次构建需下载依赖，可能需要几分钟，请耐心等待..."
-echo ""
-
-if mvn clean package -DskipTests; then
-    JAR_FILE=$(find target -name "*.jar" -not -name "*sources*" | head -1)
-    if [ -z "$JAR_FILE" ]; then
-        error "未找到构建产物 JAR 文件，请检查 Maven 构建输出"
+    if [ -f "$PROJECT_DIR/deploy-upload/backend.jar" ]; then
+        PREBUILT_JAR="$PROJECT_DIR/deploy-upload/backend.jar"
+        info "发现预构建后端: deploy-upload/backend.jar"
+    elif [ -f "$BACKEND_DIR/backend.jar" ]; then
+        PREBUILT_JAR="$BACKEND_DIR/backend.jar"
+        info "使用已存在的 backend.jar"
+    elif [ -f "$PROJECT_DIR/disk-backend/backend/target/"*.jar ]; then
+        # 取第一个匹配的 JAR
+        for f in "$PROJECT_DIR/disk-backend/backend/target/"*.jar; do
+            PREBUILT_JAR="$f"
+            break
+        done
+        info "使用 target 目录中的 JAR"
+    else
+        error "未找到预构建的 backend.jar！请先在本地运行 bash deploy/build-local.sh <服务器IP>"
     fi
-    cp "$JAR_FILE" "$BACKEND_DIR/backend.jar"
-    info "后端编译完成 → $BACKEND_DIR/backend.jar"
+
+    cp "$PREBUILT_JAR" "$BACKEND_DIR/backend.jar"
+    info "后端 JAR 已就绪 → $BACKEND_DIR/backend.jar"
 else
-    error "后端 Maven 构建失败，请检查错误信息并重试"
+    # ---- 服务器本地构建后端 ----
+    cd "$PROJECT_DIR/disk-backend/backend"
+
+    # 修正 Windows 上传路径为 Linux 路径
+    if grep -q "E:/disk/upload/" src/main/resources/application.yml 2>/dev/null; then
+        sed -i 's|E:/disk/upload/|/opt/cloud-disk/upload/|g' src/main/resources/application.yml
+        info "已自动将上传路径从 Windows 格式修正为 /opt/cloud-disk/upload/"
+    fi
+
+    warn "服务器性能有限，Maven 编译可能较慢..."
+    echo "  正在编译后端项目 (Maven)..."
+    echo ""
+
+    if mvn clean package -DskipTests -q 2>&1 | tail -5; then
+        JAR_FILE=$(find target -name "*.jar" -not -name "*sources*" | head -1)
+        if [ -z "$JAR_FILE" ]; then
+            error "未找到构建产物 JAR 文件，请检查 Maven 构建输出"
+        fi
+        cp "$JAR_FILE" "$BACKEND_DIR/backend.jar"
+        info "后端编译完成 → $BACKEND_DIR/backend.jar"
+    else
+        error "后端 Maven 构建失败，请检查错误信息并重试"
+    fi
 fi
 
 # ============================================
@@ -216,9 +250,9 @@ if [ "$SKIP_FRONTEND_BUILD" = true ]; then
     PREBUILT_DIST=""
 
     # 优先检查通过 build-local.sh 上传的目录
-    if [ -d "$PROJECT_DIR/frontend-upload/dist" ]; then
-        PREBUILT_DIST="$PROJECT_DIR/frontend-upload/dist"
-        info "发现预构建前端: frontend-upload/dist/"
+    if [ -d "$PROJECT_DIR/deploy-upload/frontend-dist" ]; then
+        PREBUILT_DIST="$PROJECT_DIR/deploy-upload/frontend-dist"
+        info "发现预构建前端: deploy-upload/frontend-dist/"
     elif [ -d "$PROJECT_DIR/disk-frontend/dist" ]; then
         PREBUILT_DIST="$PROJECT_DIR/disk-frontend/dist"
         info "使用已存在的 disk-frontend/dist/"
