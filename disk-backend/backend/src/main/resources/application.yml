@@ -60,7 +60,7 @@ spring:
 # 默认使用当前目录下的 upload 文件夹，也可改为绝对路径如 E:/disk/upload/
 disk:
   upload:
-    path: E:/disk/upload/
+    path: ./upload/
 
 
 # MyBatis-Plus 配置

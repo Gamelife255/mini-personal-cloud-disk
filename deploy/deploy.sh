@@ -12,7 +12,6 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DEPLOY_DIR="/opt/cloud-disk"
 FRONTEND_DIR="$DEPLOY_DIR/frontend"
 BACKEND_DIR="$DEPLOY_DIR/backend"
-UPLOAD_DIR="$DEPLOY_DIR/upload"
 
 # ---- 颜色定义 ----
 RED='\033[0;31m'
@@ -178,13 +177,11 @@ if [ ! -d "$DEPLOY_DIR" ]; then
     echo "  正在创建部署目录结构..."
 fi
 
-sudo mkdir -p "$FRONTEND_DIR" "$BACKEND_DIR" "$UPLOAD_DIR"
+sudo mkdir -p "$FRONTEND_DIR" "$BACKEND_DIR"
 sudo chown -R "$USER:$USER" "$DEPLOY_DIR" 2>/dev/null || true
-sudo chmod 755 "$UPLOAD_DIR"
 
 info "前端目录: $FRONTEND_DIR"
 info "后端目录: $BACKEND_DIR"
-info "上传目录: $UPLOAD_DIR"
 
 # ============================================
 # 4. 构建后端
@@ -215,12 +212,6 @@ if [ "$SKIP_BACKEND_BUILD" = true ]; then
 else
     # ---- 服务器本地构建后端 ----
     cd "$PROJECT_DIR/disk-backend/backend"
-
-    # 修正 Windows 上传路径为 Linux 路径
-    if grep -q "E:/disk/upload/" src/main/resources/application.yml 2>/dev/null; then
-        sed -i 's|E:/disk/upload/|/opt/cloud-disk/upload/|g' src/main/resources/application.yml
-        info "已自动将上传路径从 Windows 格式修正为 /opt/cloud-disk/upload/"
-    fi
 
     warn "服务器性能有限，Maven 编译可能较慢..."
     echo "  正在编译后端项目 (Maven)..."
@@ -327,7 +318,7 @@ server {
 
     # 上传文件的直接访问
     location /upload/ {
-        alias $UPLOAD_DIR/;
+        alias $BACKEND_DIR/upload/;
     }
 }
 NGINX_EOF
@@ -398,7 +389,7 @@ if [ -n "$PUBLIC_IP" ] && [ "$DOMAIN" != "$PUBLIC_IP" ]; then
 fi
 echo "  │  前端目录:  $FRONTEND_DIR"
 echo "  │  后端目录:  $BACKEND_DIR"
-echo "  │  上传目录:  $UPLOAD_DIR"
+echo "  │  上传目录:  $BACKEND_DIR/upload/"
 echo "  │  后端日志:  $BACKEND_DIR/app.log"
 if [ $DEPLOY_MIN -gt 0 ]; then
     echo "  │  总耗时:    ${DEPLOY_MIN} 分 ${DEPLOY_SEC} 秒"
