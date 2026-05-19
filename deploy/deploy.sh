@@ -198,21 +198,19 @@ if [ "$SKIP_BACKEND_BUILD" = true ]; then
     if [ -f "$PROJECT_DIR/deploy-upload/backend.jar" ]; then
         PREBUILT_JAR="$PROJECT_DIR/deploy-upload/backend.jar"
         info "发现预构建后端: deploy-upload/backend.jar"
-    elif [ -f "$BACKEND_DIR/backend.jar" ]; then
-        PREBUILT_JAR="$BACKEND_DIR/backend.jar"
-        info "使用已存在的 backend.jar"
-    elif [ -f "$PROJECT_DIR/disk-backend/backend/target/"*.jar ]; then
-        # 取第一个匹配的 JAR
-        for f in "$PROJECT_DIR/disk-backend/backend/target/"*.jar; do
-            PREBUILT_JAR="$f"
-            break
-        done
+    elif [ -f "$PROJECT_DIR/backend.jar" ]; then
+        PREBUILT_JAR="$PROJECT_DIR/backend.jar"
+        info "发现预构建后端: backend.jar"
+    elif [ -f "$PROJECT_DIR/disk-backend/backend/target/backend-1.0-SNAPSHOT.jar" ]; then
+        PREBUILT_JAR="$PROJECT_DIR/disk-backend/backend/target/backend-1.0-SNAPSHOT.jar"
         info "使用 target 目录中的 JAR"
     else
-        error "未找到预构建的 backend.jar！请先在本地运行 bash deploy/build-local.sh <服务器IP>"
+        error "未找到预构建的 backend.jar！请先在本地运行构建并上传 deploy-package.zip"
     fi
 
-    cp "$PREBUILT_JAR" "$BACKEND_DIR/backend.jar"
+    if [ "$PREBUILT_JAR" != "$BACKEND_DIR/backend.jar" ]; then
+        cp "$PREBUILT_JAR" "$BACKEND_DIR/backend.jar"
+    fi
     info "后端 JAR 已就绪 → $BACKEND_DIR/backend.jar"
 else
     # ---- 服务器本地构建后端 ----
@@ -249,10 +247,13 @@ if [ "$SKIP_FRONTEND_BUILD" = true ]; then
     # ---- 使用本地预构建的前端包 ----
     PREBUILT_DIST=""
 
-    # 优先检查通过 build-local.sh 上传的目录
+    # 优先检查通过 build-local 上传的目录
     if [ -d "$PROJECT_DIR/deploy-upload/frontend-dist" ]; then
         PREBUILT_DIST="$PROJECT_DIR/deploy-upload/frontend-dist"
         info "发现预构建前端: deploy-upload/frontend-dist/"
+    elif [ -d "$PROJECT_DIR/frontend-dist" ]; then
+        PREBUILT_DIST="$PROJECT_DIR/frontend-dist"
+        info "发现预构建前端: frontend-dist/"
     elif [ -d "$PROJECT_DIR/disk-frontend/dist" ]; then
         PREBUILT_DIST="$PROJECT_DIR/disk-frontend/dist"
         info "使用已存在的 disk-frontend/dist/"
