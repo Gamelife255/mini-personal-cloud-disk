@@ -429,5 +429,5 @@ bash deploy/deploy.sh
 
 ## 📊 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=你的用户名/mini-personal-cloud-disk&type=Date)](https://star-history.com/#你的用户名/mini-personal-cloud-disk&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=Gamelife255/mini-personal-cloud-disk&type=Date)](https://star-history.com/#你的用户名/mini-personal-cloud-disk&Date)
 
