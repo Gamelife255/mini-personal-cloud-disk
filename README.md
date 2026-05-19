@@ -9,6 +9,7 @@
 ### 后端
 - **Spring Boot 3.2.0** - 后端框架
 - **MySQL 8.0+** - 数据库
+- **Redis 7+** - 缓存 / JWT 黑名单
 - **MyBatis-Plus 3.5.5** - ORM框架
 - **JWT** - 用户认证
 - **TwelveMonkeys ImageIO** - PSD文件解析
@@ -54,10 +55,11 @@
 |--------|----------|
 | 1 | 密码 BCrypt 加密存储 |
 | 2 | JWT 登录鉴权 |
-| 3 | 上传文件类型白名单 + 重命名 |
-| 4 | 文件真实类型校验（魔数检测） |
-| 5 | 每个文件绑定 userId，接口权限校验 |
-| 6 | 过滤路径遍历字符 |
+| 3 | JWT 黑名单（Redis）— 退出登录后 Token 失效 |
+| 4 | 上传文件类型白名单 + 重命名 |
+| 5 | 文件真实类型校验（魔数检测） |
+| 6 | 每个文件绑定 userId，接口权限校验 |
+| 7 | 过滤路径遍历字符 |
 
 ## 🚀 快速开始
 
@@ -65,6 +67,7 @@
 - **Java 17+**
 - **Node.js 18+**
 - **MySQL 8.0+**
+- **Redis 7+**
 - **Maven 3.8+**
 
 ### 运行步骤
@@ -109,59 +112,76 @@ script/start.bat
 
 ## 🖥️ Linux 服务器部署
 
-项目提供了一套完整的 Linux 服务器部署脚本，位于 `deploy/` 目录下。适用于 **Ubuntu 20.04 / 22.04 / 24.04**。
+项目提供了一套完整的部署脚本，支持**低配服务器**通过本地构建 + 上传的方式完成部署。适用于 **Ubuntu 20.04 / 22.04 / 24.04**。
 
 ### 脚本概览
 
-| 脚本 | 用途 | 何时使用 |
+| 脚本 | 用途 | 运行位置 |
 |------|------|----------|
-| `setup-env.sh` | 安装所有运行依赖 | 全新服务器，仅需执行一次 |
-| `deploy.sh` | 一键构建并部署前后端 | 每次更新代码后重新部署 |
-| `start-backend.sh` | 后端服务启停管理 | 日常运维 |
-| `service-control.sh` | 交互式前后端服务管理 | 日常运维（带菜单界面） |
+| `setup-env.sh` | 安装所有运行依赖 | 服务器（仅一次） |
+| `deploy.sh` | 一键部署（构建 + Nginx + 启动） | 服务器 |
+| `build-local.sh` | 本地构建前后端并上传 | 本地 (Linux/Mac) |
+| `build-local.bat` | 本地构建前后端并上传 | 本地 (Windows) |
+| `start-backend.sh` | 后端服务启停管理 | 服务器 |
+| `service-control.sh` | 交互式前端+后端服务管理 | 服务器 |
 
-### 全新服务器部署（只需两步）
+### 推荐方式：本地构建 + 上传（低配服务器首选）
 
-#### 第一步：安装服务器环境
+服务器编译慢、内存不足时，在本机构建然后上传，服务器端零编译。
+
+#### 第一步：安装服务器环境（仅一次）
 
 ```bash
-# 上传项目到服务器后，进入项目目录
 cd mini-personal-cloud-disk
-
-# 执行环境安装（需 sudo 权限的用户）
-bash deploy/setup-env.sh
+bash deploy/setup-env.sh    # 安装 JDK/MySQL/Redis/Nginx
 ```
 
-该脚本会自动完成以下安装和配置：
-- **JDK 17** — Java 运行环境
-- **Node.js 18** — 前端构建工具
-- **Maven** — 后端项目构建
-- **MySQL** — 数据库服务，并引导设置 root 密码
-- **Nginx** — Web 服务器与反向代理
-- **Git** — 版本管理工具
-- **防火墙** — 自动检测并放行 80/22 端口
+#### 第二步：本地构建并上传
 
-> 已安装的组件会自动跳过，不会重复安装。
+Windows：
+```bat
+deploy\build-local.bat 你的服务器IP
+```
 
-#### 第二步：一键部署
+Linux/Mac：
+```bash
+bash deploy/build-local.sh 你的服务器IP
+```
+
+#### 第三步：服务器部署
 
 ```bash
-bash deploy/deploy.sh
+cd ~/mini-personal-cloud-disk
+bash deploy/deploy.sh --use-local-build
 ```
 
-部署过程中会询问：
-- **域名或 IP 地址** — 自动检测公网 IP，直接回车即可
-- **MySQL root 密码** — 用于初始化数据库
+### 服务器直接构建（高配服务器）
 
-脚本按顺序执行 6 个阶段：
+如果服务器性能足够，也可以直接在服务器上编译：
+
+```bash
+# 仅首次
+bash deploy/setup-env.sh
+
+# 每次部署
+bash deploy/deploy.sh
+
+# 跳过前端构建（前端已提前上传）
+bash deploy/deploy.sh --skip-frontend-build
+
+# 跳过后端构建（JAR 已提前上传）
+bash deploy/deploy.sh --skip-backend-build
+```
+
+### 部署流程说明
 
 | 阶段 | 操作 |
 |------|------|
 | 1. 环境检查 | 验证 JDK、Node.js、Maven、MySQL、Nginx 是否就绪 |
 | 2. 数据库初始化 | 执行建表 SQL，创建数据库表结构 |
-| 3. 创建部署目录 | 建立 `/opt/cloud-disk/` 下的前端、后端、上传目录 |
-| 4. 构建后端 | Maven 编译打包，自动修正 Windows 上传路径为 Linux 路径 |
-| 5. 部署前端 | npm 构建并复制到 Nginx 静态目录 |
+| 3. 创建部署目录 | 建立 `/opt/cloud-disk/` 下的前端、后端目录 |
+| 4. 构建后端 | Maven 编译打包（`--skip-backend-build` 则跳过） |
+| 5. 部署前端 | npm + Vite 构建（`--skip-frontend-build` 则跳过） |
 | 6. 配置 Nginx | 生成站点配置、反向代理 `/api/` 到后端 8080 端口，启动全部服务 |
 
 ### 日常运维命令
@@ -170,13 +190,9 @@ bash deploy/deploy.sh
 # 查看后端服务状态（含内存占用、运行时长、最新日志）
 bash deploy/start-backend.sh status
 
-# 重启后端服务
+# 重启 / 停止 / 启动后端服务
 bash deploy/start-backend.sh restart
-
-# 停止后端服务
 bash deploy/start-backend.sh stop
-
-# 启动后端服务
 bash deploy/start-backend.sh start
 
 # 交互式管理菜单（可同时管理后端 + Nginx）
@@ -190,14 +206,14 @@ tail -f /opt/cloud-disk/backend/app.log
 
 ```
 /opt/cloud-disk/
-├── backend/                   # 后端 JAR + 日志
+├── backend/                   # 后端 JAR + 日志 + 上传文件
 │   ├── backend.jar            # Spring Boot 可执行 JAR
 │   ├── app.log                # 应用运行日志
-│   └── app.pid                # 进程 PID 文件
+│   ├── app.pid                # 进程 PID 文件
+│   └── upload/                # 用户上传文件（相对路径 ./upload/）
 ├── frontend/                  # 前端静态文件（Nginx 根目录）
 │   ├── index.html
 │   └── assets/
-└── upload/                    # 用户上传文件存储目录
 ```
 
 ### 常见问题
@@ -210,12 +226,28 @@ tail -f /opt/cloud-disk/backend/app.log
 **Q: 更新代码后如何重新部署？**
 ```bash
 git pull
-bash deploy/deploy.sh
+# 低配服务器：本地构建 + 上传
+# 高配服务器：bash deploy/deploy.sh
 ```
+
+**Q: Maven 构建卡住？**
+服务器性能不够时建议本地构建后上传：
+```bash
+# 本地
+bash deploy/build-local.sh 服务器IP
+# 服务器
+bash deploy/deploy.sh --use-local-build
+```
+
+**Q: 数据库中文乱码？**
+确认 `application.yml` 中 `spring.sql.init.encoding` 设为 `UTF-8`
 
 **Q: MySQL 连接失败？**
 - 确认密码正确：`mysql -u root -p`
-- 如需重置密码：`sudo mysql` 然后执行 ALTER USER 语句
+- `application.yml` 中的密码需要与 MySQL root 密码一致
+
+**Q: 上传文件报 500 错误？**
+检查 Redis 是否启动：`redis-cli ping`，返回 `PONG` 即正常
 
 ## 📁 项目结构
 
@@ -230,13 +262,19 @@ mini-personal-cloud-disk/
 │   ├── src/                   # Vue源代码
 │   ├── package.json           # npm依赖
 │   └── vite.config.js         # Vite配置
-├── deploy/                    # Linux 服务器部署脚本
+├── deploy/                    # 部署脚本
 │   ├── setup-env.sh           # 服务器环境一键安装
-│   ├── deploy.sh              # 一键部署脚本
+│   ├── deploy.sh              # 服务器端一键部署
+│   ├── build-local.sh         # 本地构建（Linux/Mac）
+│   ├── build-local.bat        # 本地构建（Windows）
 │   ├── start-backend.sh       # 后端服务管理
-│   └── service-control.sh     # 交互式服务管理
-├── script/                    # Windows 脚本
-│   └── start.bat              # 一键启动脚本
+│   ├── service-control.sh     # 交互式服务管理
+│   ├── deploy.bat             # Windows 本地部署
+│   └── update.bat             # Windows 本地更新
+├── sql/                       # 数据库脚本
+│   └── schema.sql             # 建表 + 初始数据
+├── script/                    # 快捷脚本
+│   └── start.bat              # 一键启动前端开发
 ├── study.md                   # 学习笔记
 └── README.md                  # 项目说明
 ```
@@ -261,7 +299,11 @@ spring:
 
 disk:
   upload:
-    path: E:/disk/upload/      # 文件存储路径
+    path: ./upload/             # 文件存储路径（相对路径，Windows/Linux通用）
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8           # 确保SQL中文不会乱码
 ```
 
 ### 前端配置（.env）
@@ -279,7 +321,7 @@ VITE_API_URL=http://localhost:8080
 | `/api/file/list` | GET | 文件列表 |
 | `/api/file/download/{id}` | GET | 文件下载 |
 | `/api/file/delete/{id}` | DELETE | 文件删除 |
-| `/api/file/preview/{id}` | GET | PSD预览 |
+| `/api/file/preview/{id}` | GET | 文件预览（图片/视频/PSD/PDF等） |
 | `/api/statistics/summary` | GET | 获取统计概览（文件数、文件夹数、已用空间） |
 | `/api/statistics/type-distribution` | GET | 获取文件类型分布统计 |
 | `/api/statistics/upload-trend` | GET | 获取文件上传趋势（按日期统计） |
@@ -354,21 +396,27 @@ npm run dev
 ### 2. 构建生产版本
 
 ```bash
-# 前端构建
-cd disk-frontend
-npm run build
+# 推荐：使用本地构建脚本（一次构建前后端 + 打包）
+deploy\build-local.bat          # Windows
+bash deploy/build-local.sh      # Linux/Mac
 
-# 后端打包
-cd disk-backend/backend
-mvn clean package -DskipTests
+# 或手动分别构建
+cd disk-frontend && npm run build
+cd disk-backend/backend && mvn clean package -DskipTests
 ```
 
 ### 3. 部署到服务器
 
 ```bash
-# 在服务器上执行
-bash deploy/setup-env.sh  # 仅首次部署时执行
-bash deploy/deploy.sh      # 每次更新代码后执行
+# 全新服务器（仅一次）
+bash deploy/setup-env.sh
+
+# 方案A：低配服务器 — 本地构建 + 上传
+# 本地:  bash deploy/build-local.sh 服务器IP
+# 服务器: bash deploy/deploy.sh --use-local-build
+
+# 方案B：高配服务器 — 服务器直接构建
+bash deploy/deploy.sh
 ```
 
 ## 📧 联系方式
